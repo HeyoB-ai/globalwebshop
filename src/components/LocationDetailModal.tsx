@@ -223,7 +223,7 @@ export default function LocationDetailModal({
                 <div className="bg-red-50 border border-red-100 p-3.5 rounded-xl space-y-2 mt-2">
                   <div className="flex items-center gap-2 text-red-700 text-xs font-semibold">
                     <ShieldAlert className="w-4 h-4 shrink-0" />
-                    <span>Restricties & Verboden Categorieën</span>
+                    <span>Restricties & verboden categorieën</span>
                   </div>
                   <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-650 leading-normal">
                     {location.specs.restrictions.map((r, idx) => (

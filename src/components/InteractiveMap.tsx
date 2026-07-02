@@ -27,7 +27,7 @@ export default function InteractiveMap({
       {/* Map Header */}
       <div className="absolute top-4 left-4 z-10 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/50 flex items-center gap-2">
         <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
-        <span className="text-xs font-mono text-slate-300 font-medium">Interactieve Campagnekaart</span>
+        <span className="text-xs font-mono text-slate-300 font-medium">Interactieve campagnekaart</span>
       </div>
 
       {/* Map Legend */}
@@ -35,11 +35,11 @@ export default function InteractiveMap({
         <span className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block mb-1">Legenda</span>
         <div className="flex items-center gap-2 text-xs text-slate-200">
           <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-cyan-400 to-blue-500 border border-white/20" />
-          <span>Digitaal Scherm</span>
+          <span>Digitaal scherm</span>
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-200">
           <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 border border-white/20" />
-          <span>Abri (Gedrukt)</span>
+          <span>Abri (gedrukt)</span>
         </div>
         <div className="flex items-center gap-1 text-[10px] font-medium text-blue-400 bg-blue-950/40 border border-blue-900/50 px-1.5 py-0.5 rounded-md mt-1">
           <Sparkles className="w-3 h-3 text-blue-400 shrink-0" />

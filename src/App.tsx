@@ -322,7 +322,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div className="space-y-1">
                   <h2 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
-                    {showOnlyRecommended ? 'Geadviseerde Campagnelocaties' : 'Bladeren door alle locaties'}
+                    {showOnlyRecommended ? 'Geadviseerde campagnelocaties' : 'Bladeren door alle locaties'}
                   </h2>
                   <p className="text-xs text-slate-500">
                     {answers ? (
@@ -335,7 +335,7 @@ export default function App() {
                         </strong>.
                       </span>
                     ) : (
-                      <span>Maak een mix van Abri's en Digitale schermen voor jouw campagne.</span>
+                      <span>Maak een mix van abri's en digitale schermen voor jouw campagne.</span>
                     )}
                   </p>
                 </div>
@@ -351,7 +351,7 @@ export default function App() {
                     }`}
                   >
                     <List className="w-3.5 h-3.5" />
-                    <span>Lijst & Mockups</span>
+                    <span>Lijst & mockups</span>
                   </button>
                   <button
                     onClick={() => setLayoutMode('map')}
@@ -525,8 +525,8 @@ export default function App() {
               <span className="font-bold text-slate-700 block mb-2 uppercase tracking-wider font-mono text-[10px]">Opgeloste Problemen</span>
               <ul className="space-y-1 text-slate-500">
                 <li>1. Intakevragen i.p.v. lege kaart</li>
-                <li>2. Altijd Stad & Plaats zichtbaar</li>
-                <li>3. Abri + Digitaal in 1 boeking</li>
+                <li>2. Altijd stad & plaats zichtbaar</li>
+                <li>3. Abri + digitaal in 1 boeking</li>
                 <li>4. Uitgebreide vlakomschrijving</li>
                 <li>5. Duidelijke contentrestricties per vlak</li>
                 <li>6. Upload & AI-creatie / checklist</li>
@@ -538,7 +538,7 @@ export default function App() {
               <ul className="space-y-1 text-slate-500">
                 <li>Vite + React 19 SPA</li>
                 <li>Tailwind CSS v4 styling</li>
-                <li>Draagbare Mock-Kaart</li>
+                <li>Draagbare mock-kaart</li>
                 <li>AI Poster Preview Generator</li>
               </ul>
             </div>

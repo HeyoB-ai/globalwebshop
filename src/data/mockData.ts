@@ -6,11 +6,11 @@
 import { Location } from '../types';
 
 export const TARGET_AUDIENCES = [
-  { id: 'Forensen', name: 'Forensen & Pendelaars', desc: 'Mensen die reizen voor werk, vaak bij stations en doorgaande wegen.' },
-  { id: 'Gezinnen', name: 'Gezinnen & Huishoudens', desc: 'Gezinnen met kinderen, actief in woonwijken en winkelgebieden.' },
-  { id: 'Studenten', name: 'Studenten & Jongeren', desc: 'Dynamische doelgroep rondom hogescholen, universiteiten en uitgaansgebieden.' },
-  { id: 'Sportievelingen', name: 'Sportievelingen & Actieven', desc: 'Gezondheidsbewuste mensen rond sportclubs, parken en recreatiecentra.' },
-  { id: 'Zakelijk publiek', name: 'Zakelijk Publiek & Professionals', desc: 'Beslissers en kantoorpersoneel in business districten.' }
+  { id: 'Forensen', name: 'Forensen & pendelaars', desc: 'Mensen die reizen voor werk, vaak bij stations en doorgaande wegen.' },
+  { id: 'Gezinnen', name: 'Gezinnen & huishoudens', desc: 'Gezinnen met kinderen, actief in woonwijken en winkelgebieden.' },
+  { id: 'Studenten', name: 'Studenten & jongeren', desc: 'Dynamische doelgroep rondom hogescholen, universiteiten en uitgaansgebieden.' },
+  { id: 'Sportievelingen', name: 'Sportievelingen & actieven', desc: 'Gezondheidsbewuste mensen rond sportclubs, parken en recreatiecentra.' },
+  { id: 'Zakelijk publiek', name: 'Zakelijk publiek & professionals', desc: 'Beslissers en kantoorpersoneel in business districten.' }
 ];
 
 export const MOCK_LOCATIONS: Location[] = [

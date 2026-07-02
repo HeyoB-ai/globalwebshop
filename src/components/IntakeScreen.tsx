@@ -95,10 +95,10 @@ export default function IntakeScreen({ onComplete }: IntakeScreenProps) {
   };
 
   const getBudgetLabel = (val: number) => {
-    if (val < 250) return { label: 'Micro Campagne', desc: 'Ideaal voor 1 gerichte, lokale abri of kortere inzet van een digitaal scherm.' };
-    if (val < 600) return { label: 'MKB Starters-campagne', desc: 'Uitstekende mix! Combineer bijvoorbeeld 1 fysieke abri én 1 digitaal scherm voor hoog herhaalbereik.' };
-    if (val < 1200) return { label: 'Groei & Dominantie', desc: 'Meerdere hoog-volume schermen en abri’s op drukke knooppunten gedurende 1-2 weken.' };
-    return { label: 'Premium Impact', desc: 'Maximale merkzichtbaarheid op onze absolute A-locaties (o.a. Hoog Catharijne & Leidsestraat).' };
+    if (val < 250) return { label: 'Micro campagne', desc: 'Ideaal voor 1 gerichte, lokale abri of kortere inzet van een digitaal scherm.' };
+    if (val < 600) return { label: 'MKB-starterscampagne', desc: 'Uitstekende mix! Combineer bijvoorbeeld 1 fysieke abri én 1 digitaal scherm voor hoog herhaalbereik.' };
+    if (val < 1200) return { label: 'Groei & dominantie', desc: 'Meerdere hoog-volume schermen en abri’s op drukke knooppunten gedurende 1-2 weken.' };
+    return { label: 'Premium impact', desc: 'Maximale merkzichtbaarheid op onze absolute A-locaties (o.a. Hoog Catharijne & Leidsestraat).' };
   };
 
   const budgetInfo = getBudgetLabel(budget);
@@ -145,7 +145,7 @@ export default function IntakeScreen({ onComplete }: IntakeScreenProps) {
       <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-8">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-100 text-xs font-bold shadow-xs">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Buitenreclame Heruitgevonden</span>
+          <span>Buitenreclame heruitgevonden</span>
         </div>
         <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 leading-[1.1] font-sans">
           Wie wil je <span className="text-blue-700">bereiken</span> en wat mag het <span className="text-blue-700">kosten</span>?
@@ -361,7 +361,7 @@ export default function IntakeScreen({ onComplete }: IntakeScreenProps) {
                   <Globe className="w-4 h-4 text-blue-700" />
                 </div>
                 <span>
-                  <strong>Landelijke Campagne:</strong> Je advertenties worden strategisch verdeeld over de drukst bezochte A-locaties door heel Nederland voor een maximaal bereik.
+                  <strong>Landelijke campagne:</strong> Je advertenties worden strategisch verdeeld over de drukst bezochte A-locaties door heel Nederland voor een maximaal bereik.
                 </span>
               </div>
             )}
@@ -426,7 +426,7 @@ export default function IntakeScreen({ onComplete }: IntakeScreenProps) {
                   : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
               }`}
             >
-              <span>Bereken Mijn Gepersonaliseerde Campagne</span>
+              <span>Bereken mijn gepersonaliseerde campagne</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           );

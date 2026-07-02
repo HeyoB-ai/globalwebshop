@@ -23,12 +23,12 @@ export interface PosterDesign {
 // Preset styles the user can switch between. Classes are written as literals so
 // Tailwind's compiler picks them up (incl. the gradient utilities).
 export const POSTER_STYLES: { name: string; bgColor: string; textColor: string }[] = [
-  { name: 'Modern Kobalt', bgColor: 'bg-gradient-to-br from-blue-900 to-slate-950', textColor: 'text-blue-300' },
-  { name: 'Impact Geel', bgColor: 'bg-amber-400', textColor: 'text-slate-950' },
-  { name: 'Diep Zwart', bgColor: 'bg-slate-950', textColor: 'text-white' },
-  { name: 'Frisse Munt', bgColor: 'bg-gradient-to-br from-emerald-500 to-teal-800', textColor: 'text-white' },
-  { name: 'Warm Koraal', bgColor: 'bg-gradient-to-br from-rose-500 to-orange-600', textColor: 'text-white' },
-  { name: 'Zuiver Wit', bgColor: 'bg-white', textColor: 'text-slate-900' },
+  { name: 'Modern kobalt', bgColor: 'bg-gradient-to-br from-blue-900 to-slate-950', textColor: 'text-blue-300' },
+  { name: 'Impact geel', bgColor: 'bg-amber-400', textColor: 'text-slate-950' },
+  { name: 'Diep zwart', bgColor: 'bg-slate-950', textColor: 'text-white' },
+  { name: 'Frisse munt', bgColor: 'bg-gradient-to-br from-emerald-500 to-teal-800', textColor: 'text-white' },
+  { name: 'Warm koraal', bgColor: 'bg-gradient-to-br from-rose-500 to-orange-600', textColor: 'text-white' },
+  { name: 'Zuiver wit', bgColor: 'bg-white', textColor: 'text-slate-900' },
 ];
 
 // Parse "1080 x 1920 pixels..." / "118.5 x 175 cm..." into an aspect ratio.

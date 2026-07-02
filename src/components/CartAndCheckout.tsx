@@ -76,7 +76,7 @@ export default function CartAndCheckout({
 
         <div className="space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-full border border-emerald-100 text-xs font-mono font-bold">
-            <span>Boeking Bevestigd</span>
+            <span>Boeking bevestigd</span>
           </div>
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">Gefeliciteerd, {contactName || 'ondernemer'}!</h2>
           <p className="text-slate-600 text-sm max-w-md mx-auto">
@@ -121,12 +121,12 @@ export default function CartAndCheckout({
           <button
             onClick={() => {
               // Simulated download
-              alert('Simulatie: Downloaden van jouw Offerte & Mediaplan-PDF...');
+              alert('Simulatie: downloaden van jouw offerte & mediaplan-PDF...');
             }}
             className="flex items-center justify-center gap-1.5 px-5 py-3 rounded-xl text-xs font-bold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition-all cursor-pointer shadow-2xs"
           >
             <Download className="w-4 h-4" />
-            <span>Download Mediaplan (PDF)</span>
+            <span>Download mediaplan (PDF)</span>
           </button>
 
           <button
@@ -186,7 +186,7 @@ export default function CartAndCheckout({
           <div className="flex justify-between items-baseline">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-blue-700" />
-              <span>Jouw Geselecteerde Campagne</span>
+              <span>Jouw geselecteerde campagne</span>
             </h2>
             <span className="text-xs text-slate-400 font-mono">{cartItems.length} locaties geselecteerd</span>
           </div>
@@ -320,7 +320,7 @@ export default function CartAndCheckout({
           <div className="lg:col-span-5 bg-white border border-slate-200 rounded-3xl p-6 space-y-6 shadow-sm">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-emerald-700" />
-              <span>Samenvatting & Checkout</span>
+              <span>Samenvatting & checkout</span>
             </h3>
 
             {/* Campaign Metrics */}
@@ -415,7 +415,7 @@ export default function CartAndCheckout({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-750 block">Gewenste Startdatum</label>
+                <label className="text-xs font-bold text-slate-750 block">Gewenste startdatum</label>
                 <div className="relative">
                   <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <input
@@ -433,7 +433,7 @@ export default function CartAndCheckout({
                 className="w-full py-3.5 rounded-xl text-xs font-black bg-blue-700 hover:bg-blue-600 text-white shadow-xs flex items-center justify-center gap-1.5 cursor-pointer mt-4"
               >
                 <Send className="w-4 h-4" />
-                <span>Campagne Definitief Aanvragen</span>
+                <span>Campagne definitief aanvragen</span>
               </button>
             </form>
           </div>

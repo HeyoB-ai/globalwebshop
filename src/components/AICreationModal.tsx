@@ -128,7 +128,7 @@ export default function AICreationModal({
             subtitle: slogan,
             bgColor: 'bg-gradient-to-br from-blue-900 to-slate-950',
             textColor: 'text-blue-300',
-            styleName: 'Modern Kobalt',
+            styleName: 'Modern kobalt',
             badgeText: 'AANBEVOLEN',
             align: 'center',
             titleScale: 15
@@ -139,7 +139,7 @@ export default function AICreationModal({
             subtitle: slogan,
             bgColor: 'bg-amber-400',
             textColor: 'text-slate-950',
-            styleName: 'Impact Geel',
+            styleName: 'Impact geel',
             align: 'left',
             titleScale: 17
           },
@@ -149,7 +149,7 @@ export default function AICreationModal({
             subtitle: slogan,
             bgColor: 'bg-slate-950',
             textColor: 'text-white',
-            styleName: 'Diep Zwart',
+            styleName: 'Diep zwart',
             align: 'center',
             titleScale: 13
           }
@@ -295,7 +295,7 @@ export default function AICreationModal({
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            3. AI Richtlijnen Check
+            3. AI-richtlijnencheck
           </button>
         </div>
 
@@ -569,7 +569,7 @@ export default function AICreationModal({
                     </div>
 
                     <div className="flex justify-between items-center">
-                      <span className="text-slate-600 font-medium">Tekstdichtheid Audit (Max. 30% voor {location.city})</span>
+                      <span className="text-slate-600 font-medium">Tekstdichtheid audit (max. 30% voor {location.city})</span>
                       <span className="text-emerald-700 font-bold flex items-center gap-1">
                         <Check className="w-3.5 h-3.5" /> OK (14% gemeten)
                       </span>
