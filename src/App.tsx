@@ -132,6 +132,13 @@ export default function App() {
     setSelectedLocationForCreative(null);
   };
 
+  // Update an existing creative in place (e.g. edits from the fullscreen editor in the cart)
+  const handleUpdateCreative = (locationId: string, creative: CartItem['creative']) => {
+    setCart((prev) =>
+      prev.map((item) => (item.location.id === locationId ? { ...item, creative } : item))
+    );
+  };
+
   // Recommendation matcher engine (Problem #1)
   const recommendedLocations = useMemo(() => {
     if (!answers) return [];
@@ -489,6 +496,7 @@ export default function App() {
             cartItems={cart}
             onRemoveItem={handleRemoveCartItem}
             onConfigureCreative={handleConfigureCreative}
+            onUpdateCreative={handleUpdateCreative}
             onBackToLocations={() => setView('browse')}
             onClearCart={() => setCart([])}
           />

@@ -61,5 +61,10 @@ export interface CartItem {
     verifiedOk?: boolean;
     title?: string;
     subtitle?: string;
+    textColor?: string;
+    styleName?: string;
+    align?: 'left' | 'center' | 'right';
+    titleScale?: number;
+    badgeText?: string;
   };
 }

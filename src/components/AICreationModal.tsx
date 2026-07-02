@@ -5,8 +5,9 @@
 
 import React, { useState } from 'react';
 import { Location } from '../types';
-import { X, UploadCloud, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileText, LayoutTemplate, ShieldCheck, Check, ShieldAlert } from 'lucide-react';
+import { X, UploadCloud, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileText, LayoutTemplate, ShieldCheck, Check, ShieldAlert, Maximize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import PosterFullscreenEditor, { PosterDesign } from './PosterFullscreenEditor';
 
 interface AICreationModalProps {
   location: Location;
@@ -19,6 +20,11 @@ interface AICreationModalProps {
     verifiedOk?: boolean;
     title?: string;
     subtitle?: string;
+    textColor?: string;
+    styleName?: string;
+    align?: 'left' | 'center' | 'right';
+    titleScale?: number;
+    badgeText?: string;
   }) => void;
   currentCreative?: any;
 }
@@ -42,16 +48,10 @@ export default function AICreationModal({
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
-  const [generatedOptions, setGeneratedOptions] = useState<{
-    id: string;
-    title: string;
-    subtitle: string;
-    bgColor: string;
-    textColor: string;
-    styleName: string;
-    badgeText?: string;
-  }[] | null>(null);
+  const [generatedOptions, setGeneratedOptions] = useState<PosterDesign[] | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  // Fullscreen preview / editor for the poster with this id
+  const [fullscreenOptionId, setFullscreenOptionId] = useState<string | null>(null);
 
   // Tab 3: AI Verification Checklist state
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
@@ -127,25 +127,31 @@ export default function AICreationModal({
             title: mainKeyword.toUpperCase(),
             subtitle: slogan,
             bgColor: 'bg-gradient-to-br from-blue-900 to-slate-950',
-            textColor: 'text-blue-400',
+            textColor: 'text-blue-300',
             styleName: 'Modern Kobalt',
-            badgeText: 'AANBEVOLEN'
+            badgeText: 'AANBEVOLEN',
+            align: 'center',
+            titleScale: 15
           },
           {
             id: 'opt-2',
             title: mainKeyword,
             subtitle: slogan,
-            bgColor: 'bg-amber-500',
+            bgColor: 'bg-amber-400',
             textColor: 'text-slate-950',
-            styleName: 'Impact Geel'
+            styleName: 'Impact Geel',
+            align: 'left',
+            titleScale: 17
           },
           {
             id: 'opt-3',
             title: 'Kies voor ' + mainKeyword,
             subtitle: slogan,
-            bgColor: 'bg-slate-900 border-2 border-dashed border-slate-800',
+            bgColor: 'bg-slate-950',
             textColor: 'text-white',
-            styleName: 'Minimalistisch Contrast'
+            styleName: 'Diep Zwart',
+            align: 'center',
+            titleScale: 13
           }
         ]);
         setSelectedOptionId('opt-1');
@@ -191,6 +197,11 @@ export default function AICreationModal({
         type: 'ai-generated',
         promptText: prompt,
         previewUrl: selected?.bgColor,
+        textColor: selected?.textColor,
+        styleName: selected?.styleName,
+        align: selected?.align,
+        titleScale: selected?.titleScale,
+        badgeText: selected?.badgeText,
         title: selected?.title,
         subtitle: selected?.subtitle,
         verifiedOk: true
@@ -206,8 +217,26 @@ export default function AICreationModal({
     }
   };
 
+  const fullscreenOption = generatedOptions?.find((o) => o.id === fullscreenOptionId) ?? null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Fullscreen poster preview + editor */}
+      {fullscreenOption && (
+        <PosterFullscreenEditor
+          location={location}
+          design={fullscreenOption}
+          onClose={() => setFullscreenOptionId(null)}
+          onApply={(updated) => {
+            setGeneratedOptions((prev) =>
+              prev ? prev.map((o) => (o.id === updated.id ? updated : o)) : prev
+            );
+            setSelectedOptionId(updated.id);
+            setFullscreenOptionId(null);
+          }}
+        />
+      )}
+
       {/* Backdrop */}
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs" onClick={onClose} />
 
@@ -398,43 +427,54 @@ export default function AICreationModal({
               {generatedOptions && !isGenerating && (
                 <div className="space-y-4">
                   <div className="text-xs font-bold text-slate-500">
-                    Kies een van de gegenereerde ontwerpen:
+                    Kies een van de gegenereerde ontwerpen — of bekijk het beeldvullend en pas het aan:
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {generatedOptions.map((opt) => {
                       const isSelected = selectedOptionId === opt.id;
+                      const alignItems = opt.align === 'left' ? 'items-start text-left' : opt.align === 'right' ? 'items-end text-right' : 'items-center text-center';
                       return (
-                        <button
+                        <div
                           key={opt.id}
                           onClick={() => setSelectedOptionId(opt.id)}
-                          className={`p-3 rounded-xl border text-left flex flex-col justify-between h-56 transition-all relative overflow-hidden cursor-pointer ${
+                          className={`group p-3 rounded-xl border text-left flex flex-col justify-between h-56 transition-all relative overflow-hidden cursor-pointer ${
                             isSelected
                               ? 'bg-slate-50 border-blue-500 ring-2 ring-blue-500/10 shadow-sm'
                               : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
                           }`}
                         >
                           {/* Inner poster mockup display */}
-                          <div className={`w-full h-36 rounded-lg ${opt.bgColor} p-3 flex flex-col justify-between text-center shadow-inner relative overflow-hidden`}>
+                          <div className={`w-full h-36 rounded-lg ${opt.bgColor} p-3 flex flex-col justify-between shadow-inner relative overflow-hidden ${alignItems}`}>
                             {opt.badgeText && (
                               <span className="absolute top-1.5 right-1.5 bg-blue-600 text-white text-[7px] font-bold px-1 py-0.5 rounded shadow">
                                 {opt.badgeText}
                               </span>
                             )}
-                            <div className="space-y-1">
-                              <h5 className={`text-sm font-extrabold tracking-tight ${opt.textColor} uppercase font-sans break-words`}>
+                            <div className="space-y-1 w-full">
+                              <h5 className={`text-sm font-extrabold tracking-tight ${opt.textColor} uppercase font-sans break-words leading-tight`}>
                                 {opt.title}
                               </h5>
-                              <p className="text-[7px] text-slate-300 leading-normal font-sans line-clamp-3">
+                              <p className={`text-[7px] ${opt.textColor} opacity-80 leading-normal font-sans line-clamp-3`}>
                                 {opt.subtitle}
                               </p>
                             </div>
-                            
+
                             {/* Tiny mock footer */}
-                            <div className="flex justify-between items-center text-[5px] text-slate-400 border-t border-white/10 pt-1">
+                            <div className={`flex justify-between items-center text-[5px] ${opt.textColor} opacity-50 border-t border-current/20 pt-1 w-full`}>
                               <span>GLOBAL AD</span>
-                              <span>SPECS OK</span>
+                              <span>{location.city.toUpperCase()}</span>
                             </div>
+
+                            {/* Fullscreen affordance */}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSelectedOptionId(opt.id); setFullscreenOptionId(opt.id); }}
+                              title="Beeldvullend bekijken & aanpassen"
+                              className="absolute bottom-1.5 right-1.5 bg-white/85 hover:bg-white text-slate-800 rounded-md p-1 shadow opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
+                            >
+                              <Maximize2 className="w-3 h-3" />
+                            </button>
                           </div>
 
                           <div className="mt-2.5 flex justify-between items-center w-full">
@@ -445,10 +485,22 @@ export default function AICreationModal({
                               {isSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
                             </div>
                           </div>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
+
+                  {/* Prominent fullscreen CTA for the selected design */}
+                  {selectedOptionId && (
+                    <button
+                      type="button"
+                      onClick={() => setFullscreenOptionId(selectedOptionId)}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold transition-all cursor-pointer"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                      Geselecteerd ontwerp beeldvullend bekijken &amp; aanpassen
+                    </button>
+                  )}
                 </div>
               )}
             </div>

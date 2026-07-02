@@ -5,24 +5,44 @@
 
 import React, { useState } from 'react';
 import { CartItem, Location } from '../types';
-import { ShoppingBag, Calendar, Euro, FileCheck, HelpCircle, ArrowLeft, Send, Sparkles, Building, Mail, Phone, User, CheckCircle, FileText, Download } from 'lucide-react';
+import { ShoppingBag, Calendar, Euro, FileCheck, HelpCircle, ArrowLeft, Send, Sparkles, Building, Mail, Phone, User, CheckCircle, FileText, Download, Maximize2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import PosterFullscreenEditor, { PosterDesign } from './PosterFullscreenEditor';
 
 interface CartAndCheckoutProps {
   cartItems: CartItem[];
   onRemoveItem: (locationId: string) => void;
   onConfigureCreative: (location: Location) => void;
+  onUpdateCreative: (locationId: string, creative: CartItem['creative']) => void;
   onBackToLocations: () => void;
   onClearCart: () => void;
+}
+
+// Reconstruct an editable PosterDesign from a saved AI-generated creative.
+function creativeToDesign(locationId: string, creative: NonNullable<CartItem['creative']>): PosterDesign {
+  return {
+    id: 'cart-' + locationId,
+    title: creative.title ?? '',
+    subtitle: creative.subtitle ?? '',
+    bgColor: creative.previewUrl ?? 'bg-slate-950',
+    textColor: creative.textColor ?? 'text-white',
+    styleName: creative.styleName ?? 'Aangepast',
+    align: creative.align ?? 'center',
+    titleScale: creative.titleScale ?? 14,
+    badgeText: creative.badgeText,
+  };
 }
 
 export default function CartAndCheckout({
   cartItems,
   onRemoveItem,
   onConfigureCreative,
+  onUpdateCreative,
   onBackToLocations,
   onClearCart
 }: CartAndCheckoutProps) {
+  // Location id whose saved poster is being previewed/edited fullscreen
+  const [fullscreenLocationId, setFullscreenLocationId] = useState<string | null>(null);
   const [isOrdered, setIsOrdered] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
@@ -123,8 +143,34 @@ export default function CartAndCheckout({
     );
   }
 
+  const fullscreenItem = cartItems.find((i) => i.location.id === fullscreenLocationId);
+
   return (
     <div className="space-y-6">
+      {/* Fullscreen preview + editor for a saved AI creative */}
+      {fullscreenItem?.creative?.type === 'ai-generated' && (
+        <PosterFullscreenEditor
+          location={fullscreenItem.location}
+          design={creativeToDesign(fullscreenItem.location.id, fullscreenItem.creative)}
+          onClose={() => setFullscreenLocationId(null)}
+          onApply={(updated) => {
+            onUpdateCreative(fullscreenItem.location.id, {
+              ...fullscreenItem.creative,
+              type: 'ai-generated',
+              title: updated.title,
+              subtitle: updated.subtitle,
+              previewUrl: updated.bgColor,
+              textColor: updated.textColor,
+              styleName: updated.styleName,
+              align: updated.align,
+              titleScale: updated.titleScale,
+              badgeText: updated.badgeText,
+            });
+            setFullscreenLocationId(null);
+          }}
+        />
+      )}
+
       {/* Back button */}
       <button
         onClick={onBackToLocations}
@@ -190,14 +236,34 @@ export default function CartAndCheckout({
 
                   {/* Middle section: Creative status */}
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <FileText className={`w-4 h-4 shrink-0 ${item.creative ? 'text-emerald-700' : 'text-amber-700'}`} />
-                      <div>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Live poster thumbnail for AI-generated creatives */}
+                      {item.creative?.type === 'ai-generated' && item.creative.previewUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setFullscreenLocationId(item.location.id)}
+                          title="Beeldvullend bekijken & aanpassen"
+                          className={`group relative w-11 h-16 shrink-0 rounded-md overflow-hidden shadow ring-1 ring-black/5 flex flex-col justify-center p-1 cursor-pointer ${item.creative.previewUrl} ${
+                            item.creative.align === 'left' ? 'items-start text-left' : item.creative.align === 'right' ? 'items-end text-right' : 'items-center text-center'
+                          }`}
+                        >
+                          <span className={`text-[6px] font-extrabold uppercase leading-[1.05] break-words ${item.creative.textColor}`}>
+                            {item.creative.title}
+                          </span>
+                          <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
+                            <Maximize2 className="w-3 h-3 text-white opacity-0 group-hover:opacity-100" />
+                          </span>
+                        </button>
+                      )}
+                      {item.creative?.type !== 'ai-generated' && (
+                        <FileText className={`w-4 h-4 shrink-0 ${item.creative ? 'text-emerald-700' : 'text-amber-700'}`} />
+                      )}
+                      <div className="min-w-0">
                         <span className="font-bold text-slate-700 block">Campagnemateriaal (Creatie)</span>
                         {item.creative ? (
                           <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            <span>{item.creative.title} ({item.creative.subtitle})</span>
+                            <CheckCircle className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{item.creative.title} ({item.creative.subtitle})</span>
                           </span>
                         ) : (
                           <span className="text-[10px] text-amber-700 font-bold">Nog geen creatie gekoppeld</span>
@@ -205,17 +271,28 @@ export default function CartAndCheckout({
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => onConfigureCreative(item.location)}
-                      className={`px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer transition-all ${
-                        item.creative
-                          ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs'
-                          : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/60 flex items-center gap-1 font-bold'
-                      }`}
-                    >
-                      {!item.creative && <Sparkles className="w-3 h-3 text-blue-700 shrink-0" />}
-                      <span>{item.creative ? 'Wijzigen' : 'Creatie toevoegen'}</span>
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {item.creative?.type === 'ai-generated' && (
+                        <button
+                          onClick={() => setFullscreenLocationId(item.location.id)}
+                          className="px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer transition-all bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/60 flex items-center gap-1"
+                        >
+                          <Maximize2 className="w-3 h-3 shrink-0" />
+                          <span>Bekijken</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onConfigureCreative(item.location)}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer transition-all ${
+                          item.creative
+                            ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs'
+                            : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/60 flex items-center gap-1 font-bold'
+                        }`}
+                      >
+                        {!item.creative && <Sparkles className="w-3 h-3 text-blue-700 shrink-0" />}
+                        <span>{item.creative ? 'Wijzigen' : 'Creatie toevoegen'}</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Bottom: Weeks controller & total */}
