@@ -3,36 +3,58 @@
 Two Netlify Functions (v2, web-standard `Request`/`Response`) back the
 "laat AI ontwerpen" tab of the creative modal:
 
-- **`generate-creative.mjs`** — `POST { prompt, aspectRatio }` → `{ jobId, status: "queued" }`.
-- **`creative-status.mjs`** — `POST { jobId }` → `{ status: "in_progress" }` for the
-  first ~3.5s, then `{ status: "completed", imageUrl }` where `imageUrl` is a
-  server-rendered SVG poster as a `data:image/svg+xml;base64,…` data-URI.
+- **`generate-creative.mjs`** — `POST { prompt, aspectRatio }` → `{ jobId, status }`.
+- **`creative-status.mjs`** — `POST { jobId }` → `{ status: "in_progress" }` while
+  the job runs, then `{ status: "completed", imageUrl }` (or `{ status: "failed",
+  error }`).
 
-## This is MOCK mode (Higgsfield step 1)
+Both share `lib/higgsfield.mjs` (in a subdirectory → a bundled library, not a
+standalone function).
+The client layer (`src/lib/creativeClient.ts`) is identical for mock and live —
+only the server decides which path runs, keyed off the `jobId` prefix
+(`mock.` vs `live.`).
 
-Right now there is **no external call, no API key, no credits, no storage**. The
-whole job is encoded in the (stateless) `jobId`; the "result" is an SVG the
-server draws from the prompt. This step only proves the flow works end-to-end:
+## The switch: `HF_MODE` (default MOCK)
 
-> button → serverfunctie → resultaat → mand
+- `HF_MODE` unset / `mock` **(default)** → MOCK: no external call, no API key, no
+  credits, no storage. The job is encoded in the stateless `jobId`; after ~3.5s
+  `creative-status` returns a **server-rendered SVG poster** (portrait,
+  cobalt/amber house style, prompt text baked in) as a `data:image/svg+xml`
+  data-URI.
+- `HF_MODE=live` **AND both keys present** → LIVE: a real Higgsfield
+  text-to-image generation. If the mode is `live` but a key is missing, the code
+  falls back to MOCK — so the app is always safe to run without secrets, even on
+  the live site.
 
-## What comes in step 2 (the real Higgsfield call)
+## LIVE path (Higgsfield)
 
-The real Higgsfield generation will live behind an **`HF_MODE=live`** switch:
+- SDK: **`@higgsfield/client`** (v2 entry `@higgsfield/client/v2`), imported
+  dynamically **only** inside the live path.
+- Model: **Higgsfield "Soul" text-to-image**, endpoint **`/v1/text2image/soul`**
+  — chosen as a sensible, general text-to-image model. Override with
+  **`HF_IMAGE_MODEL`**.
+- `generate-creative` calls `subscribe(endpoint, { input, withPolling: false })`
+  with a **portrait** size (`1536x2048` = 3:4 by default; `1152x2048` = 9:16),
+  and returns a `live.`-prefixed jobId carrying the Higgsfield `request_id`.
+- `creative-status` polls the platform's `/requests/{request_id}/status` endpoint
+  (the same one the SDK uses internally), authenticated with the key pair, and
+  maps the result to `{ status, imageUrl }` — the same shape as the mock.
+- **Errors** (auth, credits, validation, NSFW, network) are turned into a short,
+  friendly `{ status: "failed", error }` — never a stacktrace or a key.
 
-- `HF_MODE` unset / `mock` (default) → today's mock behaviour above.
-- `HF_MODE=live` → `generate-creative` calls Higgsfield to start a real job and
-  `creative-status` polls the real job, returning the produced image URL.
+Config knobs: `HF_IMAGE_MODEL` (endpoint), `HF_IMAGE_SIZE` (e.g. `1536x2048`),
+`HF_IMAGE_QUALITY` (`720p`|`1080p`).
 
-Credentials will be provided **only** as Netlify **environment variables**:
+## Credentials — never in code or git
 
-- `HF_API_KEY`
-- `HF_API_SECRET`
+Higgsfield auth is a **key pair**: `HF_API_KEY` + `HF_API_SECRET`. They are read
+at runtime via `process.env` and **must never** be committed. `.env`, `.env.*`
+and `.netlify/` are in `.gitignore`.
 
-These are read at runtime via `process.env` inside the functions. They must
-**never** be committed to the code or to git. `.env`, `.env.*` and `.netlify/`
-are already in `.gitignore`; set the real values in the Netlify UI
-(Site settings → Environment variables) or a local, untracked `.env`.
+- **Production:** set `HF_MODE`, `HF_API_KEY`, `HF_API_SECRET` (and optionally
+  `HF_IMAGE_MODEL`) in the Netlify UI → Site settings → Environment variables.
+- **Local:** copy `.env.example` → `.env` and fill in the values. `netlify dev`
+  loads `.env` automatically.
 
 ## Running locally
 
@@ -40,5 +62,9 @@ are already in `.gitignore`; set the real values in the Netlify UI
 npm run dev:netlify   # Netlify Dev: serves the Vite app + the functions
 ```
 
+- Default (no `.env` / `HF_MODE=mock`) → the mock poster, no keys needed.
+- To test LIVE: put `HF_MODE=live` + real `HF_API_KEY`/`HF_API_SECRET` in `.env`,
+  then `npm run dev:netlify` and generate from the "laat AI ontwerpen" tab.
+
 Plain `npm run dev` (Vite only) does not run the functions; the modal then shows
-a clear "start met npm run dev:netlify" message instead of failing silently.
+a clear "start met `npm run dev:netlify`" message instead of failing silently.
