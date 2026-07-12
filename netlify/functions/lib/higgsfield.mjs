@@ -6,20 +6,26 @@
 // The real Higgsfield generation lives here, behind the HF_MODE switch. In mock
 // mode nothing here runs, so the app is safe to run without keys.
 //
-// IMPORTANT — why we call the HTTP API directly (no SDK):
-// the @higgsfield/client v2 `subscribe()` posts the input FLAT and expects a v2
-// response ({ request_id, status_url, images }). The live text-to-image endpoint
-// `/v1/text2image/soul` instead REQUIRES the body wrapped in `{ params: {...} }`
-// and returns a v1 JobSet ({ id, jobs:[{ status, results }] }). Verified against
-// the live API (422 "Field required: body.params" when flat; 200 when wrapped).
-// The SDK was therefore evaluated and dropped; we speak the documented HTTP
-// endpoint directly with the `Authorization: Key KEY:SECRET` scheme. Credentials
-// come from HF_API_KEY / HF_API_SECRET (Netlify env vars) — never committed.
+// OFFICIAL API (docs.higgsfield.ai/docs/how-to/introduction):
+//   Submit: POST https://platform.higgsfield.ai/{model_id}
+//           header  Authorization: Key KEY:SECRET
+//           body    { prompt, aspect_ratio, resolution }   (flat, NOT wrapped)
+//           → { status:"queued", request_id, status_url }
+//   Status: GET  https://platform.higgsfield.ai/requests/{request_id}/status
+//           → { status, images:[{url}] }   (queued|in_progress|completed|failed|nsfw)
+// Verified live: 200 + a real image URL on higgsfield-ai/soul/standard.
 //
-// Model: Higgsfield "Soul" text-to-image, endpoint /v1/text2image/soul
-// (configurable via HF_IMAGE_MODEL).
+// MODEL: configurable via HF_IMAGE_MODEL. Default higgsfield-ai/soul/standard
+// (proven working). Nano Banana Pro was requested, but its REST model_id is not
+// published in the docs and ~25 plausible slugs all returned 404 "Model not
+// found" — it does not appear to be exposed on the public REST API yet. Switch
+// HF_IMAGE_MODEL to it once the id is known (same request/response format).
+//
+// Credentials from HF_API_KEY / HF_API_SECRET (Netlify env vars) — never committed.
 
-const DEFAULT_MODEL = '/v1/text2image/soul';
+const DEFAULT_MODEL = 'higgsfield-ai/soul/standard';
+const DEFAULT_RESOLUTION = '1080p';
+const DEFAULT_ASPECT = '3:4';
 const DEFAULT_BASE_URL = 'https://platform.higgsfield.ai';
 
 /** Current mode: "mock" (default) or "live". */
@@ -50,21 +56,15 @@ function baseUrl() {
 function authHeaders(withJson = false) {
   const h = { Authorization: `Key ${process.env.HF_API_KEY}:${process.env.HF_API_SECRET}` };
   if (withJson) h['Content-Type'] = 'application/json';
+  h.Accept = 'application/json';
   return h;
-}
-
-// Portrait sizes suited to an abri/poster — valid Higgsfield "Soul" presets
-// (SoulSize in the SDK). Override with HF_IMAGE_SIZE.
-function sizeForAspect(aspectRatio) {
-  if (process.env.HF_IMAGE_SIZE) return process.env.HF_IMAGE_SIZE;
-  const map = { '3:4': '1536x2048', '9:16': '1152x2048' };
-  return map[aspectRatio] || '1536x2048';
 }
 
 // Map an HTTP failure to a short, safe message — never a stacktrace or a key.
 function httpFriendly(status) {
   if (status === 401) return 'Higgsfield-authenticatie mislukt. Controleer de sleutels.';
   if (status === 403) return 'Onvoldoende Higgsfield-credits om te genereren.';
+  if (status === 404) return 'Het gekozen AI-model is niet beschikbaar.';
   if (status === 400 || status === 422) return 'De aanvraag werd geweigerd (ongeldige invoer).';
   return 'Kon de AI-generatie niet uitvoeren. Probeer het later opnieuw.';
 }
@@ -74,20 +74,16 @@ function httpFriendly(status) {
  * Returns { requestId, status }. Throws a friendly Error on failure.
  */
 export async function startLiveGeneration(prompt, aspectRatio) {
-  const endpoint = process.env.HF_IMAGE_MODEL || DEFAULT_MODEL;
+  const model = process.env.HF_IMAGE_MODEL || DEFAULT_MODEL;
   const body = {
-    params: {
-      prompt,
-      width_and_height: sizeForAspect(aspectRatio),
-      quality: process.env.HF_IMAGE_QUALITY === '720p' ? '720p' : '1080p',
-      batch_size: 1,
-      enhance_prompt: true,
-    },
+    prompt,
+    aspect_ratio: aspectRatio || DEFAULT_ASPECT,
+    resolution: process.env.HF_IMAGE_RESOLUTION || DEFAULT_RESOLUTION,
   };
 
   let res;
   try {
-    res = await fetch(`${baseUrl()}${endpoint}`, {
+    res = await fetch(`${baseUrl()}/${model}`, {
       method: 'POST',
       headers: authHeaders(true),
       body: JSON.stringify(body),
@@ -99,7 +95,6 @@ export async function startLiveGeneration(prompt, aspectRatio) {
 
   const text = await res.text();
   if (!res.ok) {
-    // TEMP server-side diagnostic — full status + body, never the keys.
     debug(`start failed: HTTP ${res.status} ${res.statusText} — body: ${text.slice(0, 800)}`);
     throw new Error(httpFriendly(res.status));
   }
@@ -111,19 +106,19 @@ export async function startLiveGeneration(prompt, aspectRatio) {
     debug('start: non-JSON body:', text.slice(0, 300));
     throw new Error('Onverwacht antwoord van de ontwerpserver.');
   }
-  if (!data.id) {
-    debug('start: no job id in body:', text.slice(0, 300));
+  if (!data.request_id) {
+    debug('start: no request_id in body:', text.slice(0, 300));
     throw new Error('Geen job-id ontvangen van de server.');
   }
-  return { requestId: data.id, status: data.jobs?.[0]?.status || 'queued' };
+  return { requestId: data.request_id, status: data.status || 'queued' };
 }
 
 /**
- * Poll a live job (JobSet) and return { status, imageUrl? , error? } in the
+ * Poll a live job's status and return { status, imageUrl? , error? } in the
  * exact shape the mock returns, so the client layer needs no changes.
  */
 export async function getLiveStatus(requestId) {
-  const url = `${baseUrl()}/v1/job-sets/${requestId}`;
+  const url = `${baseUrl()}/requests/${requestId}/status`;
 
   let res;
   try {
@@ -146,21 +141,17 @@ export async function getLiveStatus(requestId) {
     return { status: 'in_progress' };
   }
 
-  const jobs = Array.isArray(data.jobs) ? data.jobs : [];
-  const done = jobs.find((j) => j.status === 'completed');
-  if (done) {
-    const imageUrl = done.results?.raw?.url || done.results?.min?.url;
-    if (!imageUrl) return { status: 'failed', error: 'Geen afbeelding ontvangen van de server.' };
-    return { status: 'completed', imageUrl };
+  switch (data.status) {
+    case 'completed': {
+      const imageUrl = data.images?.[0]?.url;
+      if (!imageUrl) return { status: 'failed', error: 'Geen afbeelding ontvangen van de server.' };
+      return { status: 'completed', imageUrl };
+    }
+    case 'failed':
+      return { status: 'failed', error: 'De generatie is mislukt.' };
+    case 'nsfw':
+      return { status: 'failed', error: 'De afbeelding is geweigerd (ongepaste inhoud).' };
+    default:
+      return { status: 'in_progress' };
   }
-  if (jobs.some((j) => j.status === 'nsfw')) {
-    return { status: 'failed', error: 'De afbeelding is geweigerd (ongepaste inhoud).' };
-  }
-  if (jobs.some((j) => j.status === 'failed')) {
-    return { status: 'failed', error: 'De generatie is mislukt.' };
-  }
-  if (jobs.some((j) => j.status === 'canceled')) {
-    return { status: 'failed', error: 'De generatie is geannuleerd.' };
-  }
-  return { status: 'in_progress' };
 }
