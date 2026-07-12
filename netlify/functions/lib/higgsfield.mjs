@@ -6,15 +6,15 @@
 // The real Higgsfield generation lives here, behind the HF_MODE switch. In mock
 // mode nothing here runs, so the app is safe to run without keys.
 //
-// IMPORTANT — why we call the HTTP API directly instead of @higgsfield/client:
-// the v2 SDK's `subscribe()` posts the input FLAT and expects a v2 response
-// ({ request_id, status_url, images }). The live text-to-image endpoint
+// IMPORTANT — why we call the HTTP API directly (no SDK):
+// the @higgsfield/client v2 `subscribe()` posts the input FLAT and expects a v2
+// response ({ request_id, status_url, images }). The live text-to-image endpoint
 // `/v1/text2image/soul` instead REQUIRES the body wrapped in `{ params: {...} }`
 // and returns a v1 JobSet ({ id, jobs:[{ status, results }] }). Verified against
 // the live API (422 "Field required: body.params" when flat; 200 when wrapped).
-// So we speak the documented HTTP endpoint directly, using the SDK's own auth
-// scheme (Authorization: Key KEY:SECRET). Credentials come from HF_API_KEY /
-// HF_API_SECRET (Netlify env vars) — never committed.
+// The SDK was therefore evaluated and dropped; we speak the documented HTTP
+// endpoint directly with the `Authorization: Key KEY:SECRET` scheme. Credentials
+// come from HF_API_KEY / HF_API_SECRET (Netlify env vars) — never committed.
 //
 // Model: Higgsfield "Soul" text-to-image, endpoint /v1/text2image/soul
 // (configurable via HF_IMAGE_MODEL).
@@ -35,6 +35,12 @@ export function hasKeys() {
 /** Live generation only runs when explicitly switched on AND keys are present. */
 export function isLive() {
   return hfMode() === 'live' && hasKeys();
+}
+
+// Opt-in diagnostics (server-side terminal only, never keys). Off by default.
+function debug(...args) {
+  const v = (process.env.HF_DEBUG || '').toLowerCase();
+  if (v === '1' || v === 'true') console.error('[higgsfield]', ...args);
 }
 
 function baseUrl() {
@@ -87,14 +93,14 @@ export async function startLiveGeneration(prompt, aspectRatio) {
       body: JSON.stringify(body),
     });
   } catch (err) {
-    console.error('[higgsfield] start network error:', err?.message);
+    debug('start network error:', err?.message);
     throw new Error('Kon de AI-ontwerpserver niet bereiken.');
   }
 
   const text = await res.text();
   if (!res.ok) {
     // TEMP server-side diagnostic — full status + body, never the keys.
-    console.error(`[higgsfield] start failed: HTTP ${res.status} ${res.statusText} — body: ${text.slice(0, 800)}`);
+    debug(`start failed: HTTP ${res.status} ${res.statusText} — body: ${text.slice(0, 800)}`);
     throw new Error(httpFriendly(res.status));
   }
 
@@ -102,11 +108,11 @@ export async function startLiveGeneration(prompt, aspectRatio) {
   try {
     data = JSON.parse(text);
   } catch {
-    console.error('[higgsfield] start: non-JSON body:', text.slice(0, 300));
+    debug('start: non-JSON body:', text.slice(0, 300));
     throw new Error('Onverwacht antwoord van de ontwerpserver.');
   }
   if (!data.id) {
-    console.error('[higgsfield] start: no job id in body:', text.slice(0, 300));
+    debug('start: no job id in body:', text.slice(0, 300));
     throw new Error('Geen job-id ontvangen van de server.');
   }
   return { requestId: data.id, status: data.jobs?.[0]?.status || 'queued' };
@@ -129,7 +135,7 @@ export async function getLiveStatus(requestId) {
   if (!res.ok) {
     if (res.status >= 500) return { status: 'in_progress' };
     const t = await res.text().catch(() => '');
-    console.error(`[higgsfield] status failed: HTTP ${res.status} — body: ${t.slice(0, 400)}`);
+    debug(`status failed: HTTP ${res.status} — body: ${t.slice(0, 400)}`);
     return { status: 'failed', error: 'Kon de status van de generatie niet ophalen.' };
   }
 

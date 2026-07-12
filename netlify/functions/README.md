@@ -30,12 +30,13 @@ only the server decides which path runs, keyed off the `jobId` prefix
 
 - Model: **Higgsfield "Soul" text-to-image**, endpoint **`/v1/text2image/soul`**
   — a sensible, general text-to-image model. Override with **`HF_IMAGE_MODEL`**.
-- **Why direct HTTP, not `@higgsfield/client`:** the v2 SDK's `subscribe()` posts
+- **Why direct HTTP (no SDK):** the `@higgsfield/client` v2 `subscribe()` posts
   the input *flat* and expects a v2 response (`{ request_id, status_url, images }`).
   This endpoint instead **requires `{ params: {...} }`** and returns a v1 JobSet
   (`{ id, jobs:[{ status, results }] }`). Verified live: flat → `422 "Field
-  required: body.params"`; wrapped → `200`. So we call the documented HTTP
-  endpoint directly, using the SDK's own auth scheme.
+  required: body.params"`; wrapped → `200`. The SDK was therefore evaluated and
+  removed; we call the documented HTTP endpoint directly with the
+  `Authorization: Key KEY:SECRET` scheme.
 - Auth header: `Authorization: Key ${HF_API_KEY}:${HF_API_SECRET}`.
 - `generate-creative` → `POST /v1/text2image/soul` with
   `{ params: { prompt, width_and_height, quality, batch_size, enhance_prompt } }`
@@ -45,12 +46,12 @@ only the server decides which path runs, keyed off the `jobId` prefix
   returns `{ status:"completed", imageUrl }` (from `jobs[0].results.raw.url`) —
   the same shape as the mock, so `creativeClient.ts` is unchanged.
 - **Errors** (auth, credits, validation, NSFW, network) become a short, friendly
-  `{ status: "failed", error }` — never a stacktrace or a key. On failure the
-  function also logs the full HTTP status + body **server-side** (terminal only)
-  for diagnosis.
+  `{ status: "failed", error }` — never a stacktrace or a key. Set **`HF_DEBUG=1`**
+  to log the full HTTP status + body **server-side** (terminal only) for
+  diagnosis; it is off by default.
 
 Config knobs: `HF_IMAGE_MODEL` (endpoint), `HF_IMAGE_SIZE` (e.g. `1536x2048`),
-`HF_IMAGE_QUALITY` (`720p`|`1080p`).
+`HF_IMAGE_QUALITY` (`720p`|`1080p`), `HF_DEBUG` (`1` to log failures server-side).
 
 ## Credentials — never in code or git
 
