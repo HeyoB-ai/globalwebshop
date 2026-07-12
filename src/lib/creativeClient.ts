@@ -16,7 +16,7 @@ const UNREACHABLE_MSG =
   'Start de app met `npm run dev:netlify` om de creatie te testen.';
 
 const POLL_INTERVAL_MS = 1500;
-const POLL_TIMEOUT_MS = 60_000;
+const POLL_TIMEOUT_MS = 90_000;
 
 async function postJson(url: string, body: unknown): Promise<any> {
   let res: Response;
@@ -59,13 +59,13 @@ export async function startCreative(prompt: string, aspectRatio: string): Promis
 }
 
 /**
- * Poll a job until it completes; returns the resulting imageUrl.
- * Calls onProgress with the poll attempt count while in progress.
+ * Poll a job until it completes; returns the resulting image URLs (one per
+ * variant). Calls onProgress with the poll attempt count while in progress.
  */
 export async function pollCreative(
   jobId: string,
   onProgress?: (attempt: number) => void,
-): Promise<string> {
+): Promise<string[]> {
   const started = Date.now();
   let attempt = 0;
 
@@ -73,8 +73,13 @@ export async function pollCreative(
     const data = await postJson(STATUS_URL, { jobId });
 
     if (data.status === 'completed') {
-      if (!data.imageUrl) throw new Error('Geen afbeelding ontvangen van de server.');
-      return data.imageUrl as string;
+      const urls: string[] = Array.isArray(data.imageUrls)
+        ? data.imageUrls
+        : data.imageUrl
+          ? [data.imageUrl]
+          : [];
+      if (urls.length === 0) throw new Error('Geen afbeeldingen ontvangen van de server.');
+      return urls;
     }
     if (data.status === 'failed') {
       throw new Error(data.error || 'De creatie is mislukt.');

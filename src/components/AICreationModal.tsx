@@ -43,11 +43,12 @@ export default function AICreationModal({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'analyzing' | 'completed'>('idle');
 
-  // Tab 2: AI Design state
+  // Tab 2: AI Design state (3 textless background variants to choose from)
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
 
   // Tab 3: AI Verification Checklist state
@@ -88,23 +89,25 @@ export default function AICreationModal({
     }, 200);
   };
 
-  // AI Poster Generation — calls the (mock) Netlify Functions via creativeClient.
+  // AI background generation — 3 textless variants via the Netlify Functions.
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isGenerating) return;
 
     setIsGenerating(true);
-    setGeneratedImage(null);
+    setGeneratedImages([]);
+    setSelectedImage(null);
     setGenError(null);
     setGenerationStep('Aanvraag versturen naar de ontwerp-server...');
 
     try {
-      const jobId = await startCreative(prompt, '3:4');
-      setGenerationStep('AI ontwerper is bezig met je poster...');
-      const imageUrl = await pollCreative(jobId, () => {
-        setGenerationStep('AI ontwerper is bezig met je poster...');
+      const jobId = await startCreative(prompt, '9:16');
+      setGenerationStep('AI maakt 3 achtergronden (dit duurt ~15-20s)...');
+      const imageUrls = await pollCreative(jobId, () => {
+        setGenerationStep('AI maakt 3 achtergronden (dit duurt ~15-20s)...');
       });
-      setGeneratedImage(imageUrl);
+      setGeneratedImages(imageUrls);
+      setSelectedImage(imageUrls[0] ?? null);
     } catch (err) {
       setGenError(err instanceof Error ? err.message : 'Er ging iets mis bij het genereren.');
     } finally {
@@ -143,14 +146,14 @@ export default function AICreationModal({
         title: 'Eigen Upload',
         subtitle: uploadFile.name
       });
-    } else if (activeTab === 'generate' && generatedImage) {
+    } else if (activeTab === 'generate' && selectedImage) {
       const words = prompt.trim().split(/\s+/);
-      const mainKeyword = (words[0] || 'AI-ontwerp').toUpperCase();
+      const mainKeyword = (words[0] || 'AI-achtergrond').toUpperCase();
       const slogan = prompt.length > 40 ? prompt.slice(0, 40) + '…' : prompt;
       onSaveCreative({
         type: 'ai-generated',
         promptText: prompt,
-        previewUrl: generatedImage,
+        previewUrl: selectedImage,
         title: mainKeyword,
         subtitle: slogan,
         verifiedOk: true,
@@ -314,14 +317,14 @@ export default function AICreationModal({
             <div className="space-y-5">
               <form onSubmit={handleGenerate} className="space-y-3">
                 <label className="block text-xs font-semibold text-mist">
-                  Beschrijf wat je wilt promoten (onze AI ontwerpt direct een passende poster):
+                  Beschrijf je product of aanbieding — de AI maakt 3 fotorealistische achtergronden zonder tekst:
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Bijv. Pizza Margherita 1+1 gratis deze vrijdag bij Bella Italia..."
+                    placeholder="Bijv. verse broodjes en croissants bij een gezellige bakkerij..."
                     className="flex-1 bg-white border border-line rounded-card-sm px-4 py-3 text-ink text-xs placeholder-mist-2 focus:outline-none focus:border-cobalt focus:ring-1 focus:ring-cobalt shadow-soft"
                     disabled={isGenerating}
                   />
@@ -338,6 +341,7 @@ export default function AICreationModal({
                     <span>Ontwerp</span>
                   </button>
                 </div>
+                <p className="text-[11px] text-mist-2">1 klik genereert <b className="text-mist font-semibold">3 achtergronden</b> om uit te kiezen.</p>
               </form>
 
               {/* Generating Loader */}
@@ -362,19 +366,42 @@ export default function AICreationModal({
                 </div>
               )}
 
-              {/* Server-generated poster */}
-              {generatedImage && !isGenerating && (
+              {/* 3 textless background variants — choose one */}
+              {generatedImages.length > 0 && !isGenerating && (
                 <div className="space-y-3">
-                  <div className="text-xs font-bold text-mist">
-                    Je poster is klaar. Sla 'm op om 'm aan dit scherm te koppelen.
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-mist">Kies je achtergrond:</span>
+                    <button
+                      type="button"
+                      onClick={handleGenerate}
+                      className="text-[11px] font-bold text-cobalt hover:text-cobalt-deep inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Opnieuw genereren
+                    </button>
                   </div>
-                  <div className="rounded-card-sm overflow-hidden border border-line shadow-soft bg-paper-2 flex justify-center p-4">
-                    <img
-                      src={generatedImage}
-                      alt="Gegenereerde poster"
-                      className="max-h-80 w-auto rounded-lg shadow-soft"
-                    />
+                  <div className="grid grid-cols-3 gap-3">
+                    {generatedImages.map((url, i) => {
+                      const isSel = selectedImage === url;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setSelectedImage(url)}
+                          className={`group relative rounded-card-sm overflow-hidden border-2 transition-all cursor-pointer aspect-[9/16] ${
+                            isSel ? 'border-cobalt ring-2 ring-cobalt/20 shadow-soft' : 'border-line hover:border-cobalt'
+                          }`}
+                        >
+                          <img src={url} alt={`Achtergrond ${i + 1}`} className="absolute inset-0 w-full h-full object-cover" />
+                          {isSel && (
+                            <span className="absolute top-1.5 right-1.5 bg-cobalt text-white rounded-full p-0.5 shadow">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
+                  <p className="text-[11px] text-mist-2">Nog geen tekst — je eigen kop komt er later scherp overheen.</p>
                 </div>
               )}
             </div>
@@ -483,12 +510,12 @@ export default function AICreationModal({
             onClick={handleSave}
             disabled={
               (activeTab === 'upload' && uploadStatus !== 'completed') ||
-              (activeTab === 'generate' && !generatedImage) ||
+              (activeTab === 'generate' && !selectedImage) ||
               (activeTab === 'verify' && !verifyFile)
             }
             className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
               (activeTab === 'upload' && uploadStatus === 'completed') ||
-              (activeTab === 'generate' && generatedImage) ||
+              (activeTab === 'generate' && selectedImage) ||
               (activeTab === 'verify' && verifyFile)
                 ? 'bg-cobalt hover:bg-cobalt-deep text-white shadow-soft'
                 : 'bg-paper-2 text-mist-2 cursor-not-allowed border border-line'
