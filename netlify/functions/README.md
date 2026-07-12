@@ -28,19 +28,26 @@ only the server decides which path runs, keyed off the `jobId` prefix
 
 ## LIVE path (Higgsfield)
 
-- SDK: **`@higgsfield/client`** (v2 entry `@higgsfield/client/v2`), imported
-  dynamically **only** inside the live path.
 - Model: **Higgsfield "Soul" text-to-image**, endpoint **`/v1/text2image/soul`**
-  — chosen as a sensible, general text-to-image model. Override with
-  **`HF_IMAGE_MODEL`**.
-- `generate-creative` calls `subscribe(endpoint, { input, withPolling: false })`
-  with a **portrait** size (`1536x2048` = 3:4 by default; `1152x2048` = 9:16),
-  and returns a `live.`-prefixed jobId carrying the Higgsfield `request_id`.
-- `creative-status` polls the platform's `/requests/{request_id}/status` endpoint
-  (the same one the SDK uses internally), authenticated with the key pair, and
-  maps the result to `{ status, imageUrl }` — the same shape as the mock.
-- **Errors** (auth, credits, validation, NSFW, network) are turned into a short,
-  friendly `{ status: "failed", error }` — never a stacktrace or a key.
+  — a sensible, general text-to-image model. Override with **`HF_IMAGE_MODEL`**.
+- **Why direct HTTP, not `@higgsfield/client`:** the v2 SDK's `subscribe()` posts
+  the input *flat* and expects a v2 response (`{ request_id, status_url, images }`).
+  This endpoint instead **requires `{ params: {...} }`** and returns a v1 JobSet
+  (`{ id, jobs:[{ status, results }] }`). Verified live: flat → `422 "Field
+  required: body.params"`; wrapped → `200`. So we call the documented HTTP
+  endpoint directly, using the SDK's own auth scheme.
+- Auth header: `Authorization: Key ${HF_API_KEY}:${HF_API_SECRET}`.
+- `generate-creative` → `POST /v1/text2image/soul` with
+  `{ params: { prompt, width_and_height, quality, batch_size, enhance_prompt } }`
+  (portrait `1536x2048` = 3:4 default; `1152x2048` = 9:16), and returns a
+  `live.`-prefixed jobId carrying the JobSet `id`.
+- `creative-status` → `GET /v1/job-sets/{id}`; when a job is `completed` it
+  returns `{ status:"completed", imageUrl }` (from `jobs[0].results.raw.url`) —
+  the same shape as the mock, so `creativeClient.ts` is unchanged.
+- **Errors** (auth, credits, validation, NSFW, network) become a short, friendly
+  `{ status: "failed", error }` — never a stacktrace or a key. On failure the
+  function also logs the full HTTP status + body **server-side** (terminal only)
+  for diagnosis.
 
 Config knobs: `HF_IMAGE_MODEL` (endpoint), `HF_IMAGE_SIZE` (e.g. `1536x2048`),
 `HF_IMAGE_QUALITY` (`720p`|`1080p`).

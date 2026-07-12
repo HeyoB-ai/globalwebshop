@@ -100,7 +100,7 @@ export default async (req) => {
       return Response.json({ status: 'failed', error: 'malformed jobId' }, { status: 400 });
     }
     try {
-      const result = await getLiveStatus(liveMeta.id, liveMeta.u);
+      const result = await getLiveStatus(liveMeta.id);
       return Response.json(result);
     } catch {
       return Response.json({ status: 'failed', error: 'Kon de status niet ophalen.' }, { status: 502 });

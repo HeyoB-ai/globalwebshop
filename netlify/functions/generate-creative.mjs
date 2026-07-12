@@ -32,8 +32,8 @@ export default async (req) => {
   // LIVE path — only when explicitly switched on and keys are present.
   if (isLive()) {
     try {
-      const { requestId, statusUrl, status } = await startLiveGeneration(prompt, aspectRatio);
-      const payload = JSON.stringify({ id: requestId, u: statusUrl });
+      const { requestId, status } = await startLiveGeneration(prompt, aspectRatio);
+      const payload = JSON.stringify({ id: requestId });
       const jobId = 'live.' + Buffer.from(payload, 'utf8').toString('base64url');
       return Response.json({ jobId, status: status || 'queued' });
     } catch (err) {
