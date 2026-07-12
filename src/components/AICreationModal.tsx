@@ -7,6 +7,8 @@ import React, { useState } from 'react';
 import { Location } from '../types';
 import { X, UploadCloud, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileText, LayoutTemplate, ShieldCheck, Check, ShieldAlert, Maximize2 } from 'lucide-react';
 import { startCreative, pollCreative } from '../lib/creativeClient';
+import PosterComposer from './PosterComposer';
+import { ratioForType, composeToDataUrl, type PosterFields, type PresetKey, type AccentKey } from '../lib/posterComposer';
 
 interface AICreationModalProps {
   location: Location;
@@ -50,6 +52,13 @@ export default function AICreationModal({
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
+
+  // Text-overlay (step B). Fields persist across "opnieuw genereren".
+  const posterRatio = ratioForType(location.type);
+  const [posterFields, setPosterFields] = useState<PosterFields>({ company: '', slogan: '', price: '', url: '', logo: null });
+  const [posterPreset, setPosterPreset] = useState<PresetKey>('onder');
+  const [posterAccent, setPosterAccent] = useState<AccentKey>('cobalt');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Tab 3: AI Verification Checklist state
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
@@ -101,7 +110,7 @@ export default function AICreationModal({
     setGenerationStep('Aanvraag versturen naar de ontwerp-server...');
 
     try {
-      const jobId = await startCreative(prompt, '9:16');
+      const jobId = await startCreative(prompt, posterRatio.aspect);
       setGenerationStep('AI maakt 3 achtergronden (dit duurt ~15-20s)...');
       const imageUrls = await pollCreative(jobId, () => {
         setGenerationStep('AI maakt 3 achtergronden (dit duurt ~15-20s)...');
@@ -137,7 +146,10 @@ export default function AICreationModal({
   };
 
   // Save selection back to parent
-  const handleSave = () => {
+  // The generate tab requires a chosen background + the two mandatory fields.
+  const generateReady = Boolean(selectedImage && posterFields.company.trim() && posterFields.slogan.trim());
+
+  const handleSave = async () => {
     if (activeTab === 'upload' && uploadStatus === 'completed' && uploadFile) {
       onSaveCreative({
         type: 'upload',
@@ -146,18 +158,31 @@ export default function AICreationModal({
         title: 'Eigen Upload',
         subtitle: uploadFile.name
       });
-    } else if (activeTab === 'generate' && selectedImage) {
-      const words = prompt.trim().split(/\s+/);
-      const mainKeyword = (words[0] || 'AI-achtergrond').toUpperCase();
-      const slogan = prompt.length > 40 ? prompt.slice(0, 40) + '…' : prompt;
-      onSaveCreative({
-        type: 'ai-generated',
-        promptText: prompt,
-        previewUrl: selectedImage,
-        title: mainKeyword,
-        subtitle: slogan,
-        verifiedOk: true,
-      });
+    } else if (activeTab === 'generate' && selectedImage && generateReady) {
+      // Compose the final poster (background + sharp text/logo overlay) → PNG.
+      setIsSaving(true);
+      setGenError(null);
+      try {
+        const previewUrl = await composeToDataUrl({
+          backgroundUrl: selectedImage,
+          ratio: posterRatio,
+          fields: posterFields,
+          preset: posterPreset,
+          accent: posterAccent,
+        });
+        onSaveCreative({
+          type: 'ai-generated',
+          promptText: prompt,
+          previewUrl,
+          title: posterFields.company.trim() || 'AI-poster',
+          subtitle: posterFields.slogan.trim() || prompt,
+          verifiedOk: true,
+        });
+      } catch {
+        setGenError('Kon de poster niet samenstellen. Probeer het opnieuw.');
+      } finally {
+        setIsSaving(false);
+      }
     } else if (activeTab === 'verify' && verificationResult && verifyFile) {
       onSaveCreative({
         type: 'verified',
@@ -387,7 +412,9 @@ export default function AICreationModal({
                           key={i}
                           type="button"
                           onClick={() => setSelectedImage(url)}
-                          className={`group relative rounded-card-sm overflow-hidden border-2 transition-all cursor-pointer aspect-[9/16] ${
+                          className={`group relative rounded-card-sm overflow-hidden border-2 transition-all cursor-pointer ${
+                            posterRatio.key === 'abri' ? 'aspect-[2/3]' : 'aspect-[9/16]'
+                          } ${
                             isSel ? 'border-cobalt ring-2 ring-cobalt/20 shadow-soft' : 'border-line hover:border-cobalt'
                           }`}
                         >
@@ -401,8 +428,22 @@ export default function AICreationModal({
                       );
                     })}
                   </div>
-                  <p className="text-[11px] text-mist-2">Nog geen tekst — je eigen kop komt er later scherp overheen.</p>
+                  <p className="text-[11px] text-mist-2">Deze achtergronden zijn tekstloos — jouw scherpe tekst komt eronder.</p>
                 </div>
+              )}
+
+              {/* Step B — sharp text + logo overlay on the chosen background */}
+              {selectedImage && !isGenerating && (
+                <PosterComposer
+                  backgroundUrl={selectedImage}
+                  ratio={posterRatio}
+                  fields={posterFields}
+                  onFieldsChange={setPosterFields}
+                  preset={posterPreset}
+                  onPresetChange={setPosterPreset}
+                  accent={posterAccent}
+                  onAccentChange={setPosterAccent}
+                />
               )}
             </div>
           )}
@@ -509,19 +550,21 @@ export default function AICreationModal({
           <button
             onClick={handleSave}
             disabled={
+              isSaving ||
               (activeTab === 'upload' && uploadStatus !== 'completed') ||
-              (activeTab === 'generate' && !selectedImage) ||
+              (activeTab === 'generate' && !generateReady) ||
               (activeTab === 'verify' && !verifyFile)
             }
             className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              (activeTab === 'upload' && uploadStatus === 'completed') ||
-              (activeTab === 'generate' && selectedImage) ||
-              (activeTab === 'verify' && verifyFile)
+              !isSaving && (
+                (activeTab === 'upload' && uploadStatus === 'completed') ||
+                (activeTab === 'generate' && generateReady) ||
+                (activeTab === 'verify' && verifyFile))
                 ? 'bg-cobalt hover:bg-cobalt-deep text-white shadow-soft'
                 : 'bg-paper-2 text-mist-2 cursor-not-allowed border border-line'
             }`}
           >
-            Creatie opslaan en toepassen
+            {isSaving ? 'Poster samenstellen…' : 'Creatie opslaan en toepassen'}
           </button>
         </div>
 

@@ -34,10 +34,12 @@ Uses the **official** Higgsfield API (docs.higgsfield.ai/docs/how-to/introductio
   `merk/model/variant`. Default **`higgsfield-ai/soul/standard`** (verified live:
   `200` + a real image URL).
 - Auth header: `Authorization: Key ${HF_API_KEY}:${HF_API_SECRET}`.
-- `generate-creative` → `POST /{model_id}` with a **flat** body
-  `{ prompt, aspect_ratio, resolution }` (`aspect_ratio` from the planner,
-  `resolution` via `HF_IMAGE_RESOLUTION`, default `1080p`). Returns a `live.`
-  jobId carrying the `request_id`.
+- `generate-creative` → **3 parallel** `POST /{model_id}` jobs with a **flat**
+  body `{ prompt, aspect_ratio, resolution, negative_prompt }`. The `aspect_ratio`
+  matches the chosen screen: **`9:16`** for a digital screen (1080×1920), **`2:3`**
+  for an abri (118.5×175 cm) — so the poster is never stretched. Returns a `live.`
+  jobId carrying the 3 `request_id`s; the client renders 3 textless variants to
+  choose from and overlays the sharp text/logo itself (step B).
 - `creative-status` → `GET /requests/{request_id}/status`; when `completed` it
   returns `{ status:"completed", imageUrl }` (from `images[0].url`) — the same
   shape as the mock, so `creativeClient.ts` is unchanged. Statuses:

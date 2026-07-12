@@ -12,7 +12,10 @@
 import { isLive, startLiveGeneration } from './lib/higgsfield.mjs';
 
 const VARIANTS = 3;
-const ASPECT_RATIO = '9:16'; // portrait, for an abri/poster background
+// Portrait ratios per screen type: 9:16 (digital 1080x1920) or 2:3 (abri
+// 118.5x175cm). The client sends the ratio that matches the chosen screen.
+const ALLOWED_RATIOS = new Set(['9:16', '2:3', '3:4']);
+const DEFAULT_RATIO = '9:16';
 
 // Per-variant hints so the 3 results genuinely differ (angle / light / framing).
 const VARIATION_HINTS = [
@@ -64,12 +67,14 @@ export default async (req) => {
   if (!prompt.trim()) {
     return Response.json({ error: 'prompt is required' }, { status: 400 });
   }
+  const rawRatio = String(body.aspectRatio ?? DEFAULT_RATIO);
+  const aspectRatio = ALLOWED_RATIOS.has(rawRatio) ? rawRatio : DEFAULT_RATIO;
 
   // LIVE path — 3 parallel jobs, each with its own variation of the prompt.
   if (isLive()) {
     const results = await Promise.allSettled(
       Array.from({ length: VARIANTS }, (_, i) =>
-        startLiveGeneration(buildBackgroundPrompt(prompt, i), ASPECT_RATIO, NEGATIVE_PROMPT),
+        startLiveGeneration(buildBackgroundPrompt(prompt, i), aspectRatio, NEGATIVE_PROMPT),
       ),
     );
     const ids = results.filter((r) => r.status === 'fulfilled').map((r) => r.value.requestId);
