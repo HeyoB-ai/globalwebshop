@@ -6,13 +6,15 @@
 import React, { useState, useMemo } from 'react';
 import { Location, IntakeAnswers, CartItem, TargetRegion } from './types';
 import { MOCK_LOCATIONS, TARGET_AUDIENCES } from './data/mockData';
-import IntakeScreen from './components/IntakeScreen';
 import LocationCard from './components/LocationCard';
 import LocationDetailModal from './components/LocationDetailModal';
 import AICreationModal from './components/AICreationModal';
 import InteractiveMap from './components/InteractiveMap';
 import CartAndCheckout from './components/CartAndCheckout';
-import { Sparkles, ShoppingBag, Map, List, Settings, Filter, Trash2, ArrowLeft, RefreshCw, Layout, Layers, Info, Check, ShieldCheck, Mail } from 'lucide-react';
+import Landing from './components/landing/Landing';
+import type { Screen } from './data/screens';
+import { screenToLocation } from './lib/adapters';
+import { ShoppingBag, Map, List, Filter, RefreshCw } from 'lucide-react';
 
 const isLocationInRegion = (loc: Location, region: TargetRegion): boolean => {
   if (region.type === 'land') {
@@ -190,30 +192,87 @@ export default function App() {
     return TARGET_AUDIENCES.find((ta) => ta.id === answers.targetAudience)?.name || answers.targetAudience;
   }, [answers]);
 
+  // --- Landing (planner) → existing cart, via the screen→Location adapter ---
+
+  // Add one planned screen to the cart (upsert: refresh weeks if already there).
+  const handleAddScreen = (screen: Screen, weeks: number) => {
+    const location = screenToLocation(screen);
+    setCart((prev) => {
+      const idx = prev.findIndex((item) => item.location.id === location.id);
+      if (idx > -1) {
+        return prev.map((item, i) => (i === idx ? { ...item, weeks } : item));
+      }
+      return [...prev, { location, weeks }];
+    });
+  };
+
+  // Add every selected screen at once, then jump to the cart.
+  const handleBookPlan = (screens: Screen[], weeks: number) => {
+    setCart((prev) => {
+      const next = [...prev];
+      for (const screen of screens) {
+        const location = screenToLocation(screen);
+        const idx = next.findIndex((item) => item.location.id === location.id);
+        if (idx > -1) next[idx] = { ...next[idx], weeks };
+        else next.push({ location, weeks });
+      }
+      return next;
+    });
+    setView('cart');
+  };
+
+  // Open the existing detail modal with the adapted location.
+  const handleOpenScreenDetail = (screen: Screen) => {
+    setSelectedLocationForDetail(screenToLocation(screen));
+  };
+
+  // Screen ids currently in the cart (adapter prefixes location ids with "screen-").
+  const addedScreenIds = cart
+    .map((item) => item.location.id)
+    .filter((id) => id.startsWith('screen-'))
+    .map((id) => id.slice('screen-'.length));
+
+  // NEW LANDING FLOW (replaces the old intake view)
+  if (view === 'intake') {
+    return (
+      <>
+        <Landing
+          cartCount={cart.length}
+          addedIds={addedScreenIds}
+          onOpenCart={() => setView('cart')}
+          onAddScreen={handleAddScreen}
+          onBookPlan={handleBookPlan}
+          onOpenScreenDetail={handleOpenScreenDetail}
+        />
+
+        {selectedLocationForDetail && (
+          <LocationDetailModal
+            location={selectedLocationForDetail}
+            onClose={() => setSelectedLocationForDetail(null)}
+            onToggleCart={(loc) => handleToggleCart(loc)}
+            isInCart={cart.some((item) => item.location.id === selectedLocationForDetail.id)}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-850 flex flex-col font-sans">
-      
+    <div className="min-h-screen bg-paper text-ink flex flex-col font-sans">
+
       {/* Header Bar */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-4 sm:px-6 shadow-xs">
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-line px-4 py-4 sm:px-6 shadow-soft">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          
+
           {/* Logo & Subtitle */}
           <button
-            onClick={() => {
-              if (answers) setView('browse');
-              else setView('intake');
-            }}
+            onClick={() => setView('intake')}
             className="flex items-center gap-3 text-left focus:outline-none focus:ring-0 cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-lg bg-blue-700 flex items-center justify-center text-white font-bold text-xl shadow-xs">
-              <Layers className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg tracking-tight text-slate-850 font-sans uppercase">GLOBAL <span className="text-blue-700">OUTDOOR</span></span>
-                <span className="text-xs bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full border border-blue-200 font-mono">PITCH DEMO</span>
-              </div>
-              <p className="text-[10px] text-slate-500 font-mono tracking-wider">OUT-OF-HOME REDESIGN PLATFORM</p>
+            <div className="w-9 h-9 rounded-lg bg-cobalt shadow-soft" />
+            <div className="flex items-baseline gap-2">
+              <span className="font-display font-extrabold text-lg tracking-tight text-ink">Global</span>
+              <span className="text-xs font-medium text-mist">Buitenreclame</span>
             </div>
           </button>
 
@@ -257,7 +316,7 @@ export default function App() {
 
           {/* Cart & View Actions */}
           <div className="flex items-center gap-3">
-            {answers && view !== 'intake' && (
+            {answers && (
               <button
                 onClick={() => setView(view === 'browse' ? 'cart' : 'browse')}
                 className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
@@ -282,11 +341,6 @@ export default function App() {
 
       {/* Main Content Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
-        
-        {/* INTAKE VIEW */}
-        {view === 'intake' && (
-          <IntakeScreen onComplete={handleIntakeComplete} />
-        )}
 
         {/* BROWSE/LOCATIONS VIEW */}
         {view === 'browse' && (
@@ -497,7 +551,7 @@ export default function App() {
             onRemoveItem={handleRemoveCartItem}
             onConfigureCreative={handleConfigureCreative}
             onUpdateCreative={handleUpdateCreative}
-            onBackToLocations={() => setView('browse')}
+            onBackToLocations={() => setView('intake')}
             onClearCart={() => setCart([])}
           />
         )}
@@ -505,43 +559,24 @@ export default function App() {
       </main>
 
       {/* FOOTER */}
-      <footer className="bg-white border-t border-slate-200 px-4 py-12 text-xs text-slate-500 mt-16 shadow-xs">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-          <div className="md:col-span-5 space-y-2.5">
-            <div className="flex items-center gap-1">
-              <span className="font-extrabold text-sm text-slate-800 tracking-tight">GLOBAL REDESIGN HUB</span>
-              <span className="text-[9px] bg-blue-50 text-blue-700 font-mono font-bold border border-blue-200 px-1 rounded">PROTOTYPE</span>
+      <footer className="bg-white border-t border-line px-4 py-12 text-xs text-mist-2 mt-16 shadow-soft">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start gap-6">
+          <div className="space-y-2.5 max-w-md">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-cobalt" />
+              <span className="font-display font-bold text-sm text-ink tracking-tight">Global</span>
+              <span className="text-xs font-medium text-mist">Buitenreclame</span>
             </div>
-            <p className="leading-relaxed text-slate-650">
-              Dit is een interactieve visualisatie/pitchdemo ontworpen om aan te tonen hoe het buitenreclame-aankoopplatform voor ondernemers geoptimaliseerd kan worden.
+            <p className="leading-relaxed text-mist">
+              Buitenreclame voor het MKB — vertel wie je wilt bereiken en wat je kwijt wilt, en je ziet meteen hoe ver je komt. Geen bureau, geen jargon.
             </p>
-            <p className="text-[10px] text-slate-400">
-              © 2026 Global Buitenreclame Redesign Pitch. Alle rechten voorbehouden.
+            <p className="text-[10px] text-mist-2">
+              © 2026 Global Buitenreclame. Alle rechten voorbehouden.
             </p>
           </div>
 
-          <div className="md:col-span-7 flex flex-wrap gap-8 justify-start md:justify-end text-[11px]">
-            <div>
-              <span className="font-bold text-slate-700 block mb-2 uppercase tracking-wider font-mono text-[10px]">Opgeloste Problemen</span>
-              <ul className="space-y-1 text-slate-500">
-                <li>1. Intakevragen i.p.v. lege kaart</li>
-                <li>2. Altijd stad & plaats zichtbaar</li>
-                <li>3. Abri + digitaal in 1 boeking</li>
-                <li>4. Uitgebreide vlakomschrijving</li>
-                <li>5. Duidelijke contentrestricties per vlak</li>
-                <li>6. Upload & AI-creatie / checklist</li>
-              </ul>
-            </div>
-            
-            <div>
-              <span className="font-bold text-slate-700 block mb-2 uppercase tracking-wider font-mono text-[10px]">Overig</span>
-              <ul className="space-y-1 text-slate-500">
-                <li>Vite + React 19 SPA</li>
-                <li>Tailwind CSS v4 styling</li>
-                <li>Draagbare mock-kaart</li>
-                <li>AI Poster Preview Generator</li>
-              </ul>
-            </div>
+          <div className="text-[11px] text-mist-2 sm:text-right">
+            Bereik = unieke mensen, overlap eruit gerekend · prijzen per week
           </div>
         </div>
       </footer>

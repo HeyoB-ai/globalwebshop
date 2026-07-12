@@ -1,57 +1,97 @@
-# Global Buitenreclame Redesign Hub - Pitch Demo
+# Global — Buitenreclame
 
-Dit is een interactieve herontwerp-demo voor het zelfbedieningsplatform van **Global Buitenreclame (shop.globalbuitenreclame.nl)**. 
+Zelfbedieningsplatform voor buitenreclame voor het MKB. Een ondernemer vertelt
+wie hij wil bereiken en wat hij kwijt wil, en ziet meteen hoe ver zijn budget
+reikt — zonder mediabureau, zonder jargon, zonder lege kaart.
 
-De huidige live versie heeft diverse knelpunten die drempels opwerpen voor MKB-ondernemers zonder uitgebreide marketingkennis. Deze demo lost deze knelpunten op door middel van een intuïtieve, doelgroepgerichte flow, verrijkt met slimme AI-ondersteuning.
+Gebouwd met **Vite + React 19 + TypeScript**, **Tailwind CSS v4**,
+`motion/react` (subtiele overgangen) en `lucide-react` (iconen).
 
----
-
-## 🚀 De 6 Opgeloste Problemen van de Huidige Live Shop
-
-In dit herontwerp zijn de 6 geïdentificeerde kernproblemen expliciet en overtuigend opgelost:
-
-1. **Intake-startscherm (Doelgroep-eerst)**: 
-   * *Oud*: De site start direct met een intimiderende en lege kaart waarop straten geselecteerd moeten worden.
-   * *Nieuw*: Een warm welkom met 3 eenvoudige vragen (wat promoot je, wie is je doelgroep, en wat is je budget). De AI berekent direct een gepersonaliseerde campagne en toont alleen de best passende locaties (bijv. "98% Match" voor studenten).
-2. **Altijd Stad & Plaats in beeld**:
-   * *Oud*: Bij locaties zie je alleen vage straatnamen, waardoor je niet weet in welke stad het scherm hangt.
-   * *Nieuw*: Zowel in de lijst, op de kaart, als in de winkelmand staan de **Straatnaam, Plaatsnaam én de specifieke Wijk/Buurt** (bijv. "Centrum / Grachtengordel, Amsterdam") prominent in beeld.
-3. **Gecombineerd Boeken (Abri + Digitaal)**:
-   * *Oud*: Klassieke (gedrukte) abri's en moderne digitale schermen konden niet samen in één boeking worden afgerekend.
-   * *Nieuw*: Een uniforme winkelmand waarin beide formaten naadloos worden samengevoegd, apart kunnen worden voorzien van campagnemateriaal, en gezamenlijk worden afgerekend.
-4. **Uitgebreide Vlakomschrijvingen**:
-   * *Oud*: Te summiere omschrijvingen van wat een advertentievlak nou echt inhoudt.
-   * *Nieuw*: Elke locatie beschikt over een gedetailleerd "Specificaties & Omgevingsrapport" dat de unieke contacttijd en passantenstromen uitlegt (bijv. "drukke wandelroute tussen Utrecht CS en de binnenstad, veel contacttijd bij terrassen").
-5. **Duidelijke Richtlijnen & Contentrestricties**:
-   * *Oud*: Geen inzicht in wat wel/niet mag op een bepaalde locatie of wat de aanlevervoorwaarden zijn.
-   * *Nieuw*: Een heldere "Specificaties & Richtlijnen" sectie per locatie met toegestane bestandsextensies, maximale tekstdichtheid (bijv. max 30% tekstgebied), aanlevertermijnen en specifieke restricties (bijv. "geen alcoholreclame wegens nabijgelegen scholen").
-6. **Upload & AI-creatie Flow**:
-   * *Oud*: Geen mogelijkheid om je creatie direct te testen of door AI te laten ontwerpen.
-   * *Nieuw*: Een geavanceerde campagne-tool met 3 tabs:
-     * **Eigen upload**: Met gesimuleerde bestandstoetsing en validatie-check.
-     * **Laat AI ontwerpen**: Voer een korte tekstpromoot-slogan in en zie de AI direct 3 schitterende, visueel diverse out-of-home posters renderen met jouw eigen tekst erin verwerkt.
-     * **AI Richtlijnen Check**: Upload een afbeelding en laat de AI direct controleren of de resolutie, contrastverhouding, en tekstdichtheid voldoen aan de gemeentelijke wetgeving.
+```bash
+npm install
+npm run dev       # http://localhost:3000
+npm run build     # productie-build
+npm run preview   # bekijk de build lokaal
+npm run lint      # tsc --noEmit
+```
 
 ---
 
-## 🛠️ Stack & Technologie
+## De flow (planner-first)
 
-- **Frontend framework**: Vite + React 19 + TypeScript
-- **Styling**: Tailwind CSS v4 (met op maat gemaakte Kobalt/Royalblauw kleurenpaletten)
-- **Animaties**: `motion/react` voor soepele overgangen en realistische AI-laadanimaties
-- **Icons**: `lucide-react`
-- **Kaart**: Interactieve, drag-and-drop vector SVG-kaart waarmee locaties direct kunnen worden geselecteerd zonder dat er zware of foutgevoelige Google Maps API-sleutels nodig zijn.
+De landing is één doorlopende pagina; de gebruiker begint bovenin bij de planner
+en boekt onderaan.
+
+1. **Planner (hero).** Kies een doelgroep, een regio en een budget + looptijd.
+   Terwijl je schuift zie je live het **unieke bereik**, plus zachte duwtjes:
+   - een *dubbeltellers*-regel die laat zien hoeveel bruto contacten na
+     overlap-correctie overblijven;
+   - een *nudge* ("+X bereik voor €Y extra") met een werkende **Voeg toe**-knop;
+   - *vloer*-waarschuwingen bij een te laag budget of een looptijd van 1 week,
+     met fix-links die het budget of de weken direct goedzetten.
+2. **Schermen (resultaten).** De goedkoopste bundel die het bereik maximaliseert,
+   als kaartjes met stad, wijk en doelgroep-match. Per kaart een **Voeg toe aan
+   campagne**-knop; erboven **Boek dit hele plan**.
+3. **Mand & checkout.** De geselecteerde schermen komen in de bestaande mand,
+   waar je per scherm campagnemateriaal koppelt (uploaden, door AI laten
+   ontwerpen, of laten checken) en de campagne aanvraagt.
+
+De secties *Voor jou*, *Zo werkt het*, *Uitleg*, *Testimonial* en *FAQ* leggen in
+gewone taal uit wat je koopt.
 
 ---
 
-## 📊 Mock Data vs. Productie-architectuur
+## De engine (`src/lib/campaignEngine.ts`)
 
-Omdat dit een pitch-demo is om de overtuigende gebruikerservaring te laten zien, zijn sommige onderdelen gesimuleerd. Hieronder staat beschreven wat nu mock is en hoe dit in een productieversie aangesloten zou worden:
+Pure functies, geen DOM, geen React. De planner en de resultatenlijst rekenen
+allemaal via `planCampaign(...)` — er zit geen rekenlogica in de componenten.
 
-| Feature | Demo-status (Mock) | Productie-architectuur (Echt) |
-| :--- | :--- | :--- |
-| **Locatie-inventaris** | 10 gedetailleerde Nederlandse toplocaties in een statisch JSON-bestand (`src/data/mockData.ts`). | Een databasekoppeling (bijv. PostgreSQL/Firestore) gesynchroniseerd met een inventaris-ERP zoals Broadsign of Ayuda. |
-| **AI Poster Ontwerp** | Genereert direct 3 dynamisch gestileerde CSS-poster mockups in de browser die de tekstinvoer van de gebruiker live overnemen. | Koppeling met de Google Gemini API (afbeelding-generatiemodellen zoals Imagen 3) of Stable Diffusion API om fotorealistische posters te genereren. |
-| **AI Richtlijnen Check** | Simuleert een compliance-controle en toont na een laadtijd een vinkje op resolutie, contrast, tekstdichtheid en beleidsregels. | Server-side image processing met OpenCV en Gemini Vision API om daadwerkelijk de contrastverhouding en het percentage tekst op de afbeelding te berekenen. |
-| **Geografische Kaart** | Een prachtige, interactieve, schaalbare SVG-vectorkaart met actieve pins van de locaties. | Google Maps Javascript SDK of Mapbox GL JS geïntegreerd met de geografische coördinaten (lat/lng) uit de database. |
-| **Checkout & Betaling** | Een formulier dat contactgegevens verzamelt, de boeking opslaat in de lokale staat en een bevestigingsdashboard laadt. | Integratie met Stripe of Adyen voor iDEAL-betalingen, gekoppeld aan een e-mail notificatiedienst (bijv. SendGrid) en CRM-koppeling (bijv. Salesforce). |
+`planCampaign({ region, aud, budget, weeks })` sorteert alle schermen in de regio
+op **relevant bereik per euro**, vult greedy de goedkoopste bundel binnen het
+budget, en berekent het unieke bereik. Het geeft ook upsell-*nudges* en, als het
+plan te dun is, een *floor*-hint terug.
+
+Twee constanten sturen het model:
+
+- **`CITY_DECAY` (0.72)** — schermen in dezelfde stad zien grotendeels dezelfde
+  mensen. Binnen een stad telt het sterkste scherm volledig mee; elk volgend
+  scherm telt `0.72^rang` (dus met korting). Zo blijft het gerapporteerde bereik
+  *uniek* in plaats van opgeblazen.
+- **`OFFTARGET` (0.35)** — het deel van het bereik van een scherm dat nog meetelt
+  als dat scherm níét bij de gekozen doelgroep past. Een perfecte match telt voor
+  1.0, een mismatch voor 0.35.
+
+`matchFactor`, `inRegion` en `uniqueReach` zijn losse, testbare hulpfuncties.
+`src/lib/campaignEngine.test.md` documenteert een handmatige verificatie (via
+`tsx`) tegen de goedgekeurde ontwerp-demo — de cijfers komen exact overeen.
+
+---
+
+## Data (`src/data/screens.ts`)
+
+`screens.ts` bevat **synthetische** scherm-inventaris: `genScreens()` genereert
+deterministisch (mulberry32, seed `20260710`) een set schermen met dezelfde vorm
+als de echte inventaris — `id`, `name`, `city`, `area`, `province`, `type`
+(`abri` | `digital`), `weeklyReach`, `weeklyPrice`, `audiences`, `lat`, `lng`.
+
+Deze data wordt t.z.t. vervangen door de echte **~3.900-locatie-inventaris** in
+**exact dezelfde vorm**; alleen `SCREENS` hoeft dan te wijzen naar de echte bron
+(bijv. een database of ERP zoals Broadsign/Ayuda). De engine en de UI blijven
+ongewijzigd.
+
+`src/lib/adapters.ts` (`screenToLocation`) vertaalt een engine-`Screen` naar het
+bestaande `Location`-type, zodat een gepland scherm in de bestaande mand,
+detail-modal en materiaal-flow past.
+
+---
+
+## Design
+
+De designtokens (kleuren, radii, schaduwen, fonts) staan in `src/index.css`
+(`@theme`), 1-op-1 overgenomen uit `design/reference.html` — de goedgekeurde
+visuele bron van waarheid. Licht *paper*-palet, **cobalt** als actiekleur en
+**amber** uitsluitend voor bereik-/prijsgetallen. De landing-styling staat
+gescoped in `src/components/landing/landing.css` (onder `.gws-landing`) zodat die
+niet lekt naar de rest van de app.
+
+Media (hero-video, foto's) staan in `public/assets/`.
