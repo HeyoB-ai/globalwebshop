@@ -28,14 +28,16 @@ const DEFAULT_RESOLUTION = '1080p';
 const DEFAULT_ASPECT = '3:4';
 const DEFAULT_BASE_URL = 'https://platform.higgsfield.ai';
 
-/** Current mode: "mock" (default) or "live". */
+/** Current mode: "mock" (default) or "live". Trimmed + lowercased so a stray
+ *  space/newline in the env var (common when pasting into a dashboard) can't
+ *  silently keep us on mock. */
 export function hfMode() {
-  return (process.env.HF_MODE || 'mock').toLowerCase();
+  return (process.env.HF_MODE || 'mock').trim().toLowerCase();
 }
 
-/** Both halves of the Higgsfield key pair present? */
+/** Both halves of the Higgsfield key pair present (ignoring surrounding whitespace)? */
 export function hasKeys() {
-  return Boolean(process.env.HF_API_KEY && process.env.HF_API_SECRET);
+  return Boolean((process.env.HF_API_KEY || '').trim() && (process.env.HF_API_SECRET || '').trim());
 }
 
 /** Live generation only runs when explicitly switched on AND keys are present. */
@@ -54,7 +56,9 @@ function baseUrl() {
 }
 
 function authHeaders(withJson = false) {
-  const h = { Authorization: `Key ${process.env.HF_API_KEY}:${process.env.HF_API_SECRET}` };
+  const key = (process.env.HF_API_KEY || '').trim();
+  const secret = (process.env.HF_API_SECRET || '').trim();
+  const h = { Authorization: `Key ${key}:${secret}` };
   if (withJson) h['Content-Type'] = 'application/json';
   h.Accept = 'application/json';
   return h;

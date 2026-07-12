@@ -52,6 +52,20 @@ function buildBackgroundPrompt(userPrompt, variant) {
 }
 
 export default async (req) => {
+  // Safe diagnostics (GET or ?debug=1). Returns ONLY booleans + non-secret
+  // values so you can see what the function really sees — never the keys.
+  const wantsDebug = req.method === 'GET' || new URL(req.url).searchParams.get('debug') === '1';
+  if (wantsDebug) {
+    return Response.json({
+      mode: isLive() ? 'live' : 'mock',
+      HF_MODE_present: process.env.HF_MODE !== undefined,
+      HF_API_KEY_present: Boolean((process.env.HF_API_KEY || '').trim()),
+      HF_API_SECRET_present: Boolean((process.env.HF_API_SECRET || '').trim()),
+      HF_MODE_value_normalized: (process.env.HF_MODE || '').trim().toLowerCase(),
+      HF_IMAGE_MODEL: process.env.HF_IMAGE_MODEL || null,
+    });
+  }
+
   if (req.method !== 'POST') {
     return Response.json({ error: 'Method Not Allowed' }, { status: 405 });
   }
