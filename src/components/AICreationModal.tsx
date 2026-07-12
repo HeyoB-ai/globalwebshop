@@ -6,8 +6,9 @@
 import React, { useState } from 'react';
 import { Location } from '../types';
 import { X, UploadCloud, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileText, LayoutTemplate, ShieldCheck, Check, ShieldAlert, Maximize2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import PosterFullscreenEditor, { PosterDesign } from './PosterFullscreenEditor';
+import { startCreative, pollCreative } from '../lib/creativeClient';
+import PosterComposer from './PosterComposer';
+import { ratioForType, composeToDataUrl, type PosterFields, type PresetKey, type AccentKey } from '../lib/posterComposer';
 
 interface AICreationModalProps {
   location: Location;
@@ -44,14 +45,20 @@ export default function AICreationModal({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'analyzing' | 'completed'>('idle');
 
-  // Tab 2: AI Design state
+  // Tab 2: AI Design state (3 textless background variants to choose from)
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
-  const [generatedOptions, setGeneratedOptions] = useState<PosterDesign[] | null>(null);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-  // Fullscreen preview / editor for the poster with this id
-  const [fullscreenOptionId, setFullscreenOptionId] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  // Text-overlay (step B). Fields persist across "opnieuw genereren".
+  const posterRatio = ratioForType(location.type);
+  const [posterFields, setPosterFields] = useState<PosterFields>({ company: '', slogan: '', price: '', url: '', logo: null });
+  const [posterPreset, setPosterPreset] = useState<PresetKey>('onder');
+  const [posterAccent, setPosterAccent] = useState<AccentKey>('cobalt');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Tab 3: AI Verification Checklist state
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
@@ -91,73 +98,30 @@ export default function AICreationModal({
     }, 200);
   };
 
-  // Simulated AI Poster Generation Flow
-  const handleGenerateDesigns = (e: React.FormEvent) => {
+  // AI background generation — 3 textless variants via the Netlify Functions.
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || isGenerating) return;
 
     setIsGenerating(true);
-    setGeneratedOptions(null);
+    setGeneratedImages([]);
+    setSelectedImage(null);
+    setGenError(null);
+    setGenerationStep('Aanvraag versturen naar de ontwerp-server...');
 
-    const steps = [
-      'Analyseren van campagnerichtlijnen...',
-      'Genereren van high-contrast kleurencombinaties...',
-      'Berekenen van optimale typografie-schaal...',
-      'Renderen van posterconcepten in ' + location.dimensions + '...'
-    ];
-
-    let currentStep = 0;
-    setGenerationStep(steps[0]);
-
-    const interval = setInterval(() => {
-      if (currentStep < steps.length - 1) {
-        currentStep++;
-        setGenerationStep(steps[currentStep]);
-      } else {
-        clearInterval(interval);
-
-        // Generate poster options based on prompt
-        const words = prompt.split(' ');
-        const mainKeyword = words[0] || 'Actie';
-        const slogan = prompt.length > 30 ? prompt.substring(0, 35) + '...' : prompt;
-
-        setGeneratedOptions([
-          {
-            id: 'opt-1',
-            title: mainKeyword.toUpperCase(),
-            subtitle: slogan,
-            bgColor: 'bg-gradient-to-br from-blue-900 to-slate-950',
-            textColor: 'text-blue-300',
-            styleName: 'Modern kobalt',
-            badgeText: 'AANBEVOLEN',
-            align: 'center',
-            titleScale: 15
-          },
-          {
-            id: 'opt-2',
-            title: mainKeyword,
-            subtitle: slogan,
-            bgColor: 'bg-amber-400',
-            textColor: 'text-slate-950',
-            styleName: 'Impact geel',
-            align: 'left',
-            titleScale: 17
-          },
-          {
-            id: 'opt-3',
-            title: 'Kies voor ' + mainKeyword,
-            subtitle: slogan,
-            bgColor: 'bg-slate-950',
-            textColor: 'text-white',
-            styleName: 'Diep zwart',
-            align: 'center',
-            titleScale: 13
-          }
-        ]);
-        setSelectedOptionId('opt-1');
-        setIsGenerating(false);
-      }
-    }, 700);
+    try {
+      const jobId = await startCreative(prompt, posterRatio.aspect);
+      setGenerationStep('AI maakt 3 achtergronden (dit duurt ~15-20s)...');
+      const imageUrls = await pollCreative(jobId, () => {
+        setGenerationStep('AI maakt 3 achtergronden (dit duurt ~15-20s)...');
+      });
+      setGeneratedImages(imageUrls);
+      setSelectedImage(imageUrls[0] ?? null);
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : 'Er ging iets mis bij het genereren.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   // Simulated Compliance Check Tab
@@ -182,7 +146,10 @@ export default function AICreationModal({
   };
 
   // Save selection back to parent
-  const handleSave = () => {
+  // The generate tab requires a chosen background + the two mandatory fields.
+  const generateReady = Boolean(selectedImage && posterFields.company.trim() && posterFields.slogan.trim());
+
+  const handleSave = async () => {
     if (activeTab === 'upload' && uploadStatus === 'completed' && uploadFile) {
       onSaveCreative({
         type: 'upload',
@@ -191,21 +158,31 @@ export default function AICreationModal({
         title: 'Eigen Upload',
         subtitle: uploadFile.name
       });
-    } else if (activeTab === 'generate' && generatedOptions && selectedOptionId) {
-      const selected = generatedOptions.find(o => o.id === selectedOptionId);
-      onSaveCreative({
-        type: 'ai-generated',
-        promptText: prompt,
-        previewUrl: selected?.bgColor,
-        textColor: selected?.textColor,
-        styleName: selected?.styleName,
-        align: selected?.align,
-        titleScale: selected?.titleScale,
-        badgeText: selected?.badgeText,
-        title: selected?.title,
-        subtitle: selected?.subtitle,
-        verifiedOk: true
-      });
+    } else if (activeTab === 'generate' && selectedImage && generateReady) {
+      // Compose the final poster (background + sharp text/logo overlay) → PNG.
+      setIsSaving(true);
+      setGenError(null);
+      try {
+        const previewUrl = await composeToDataUrl({
+          backgroundUrl: selectedImage,
+          ratio: posterRatio,
+          fields: posterFields,
+          preset: posterPreset,
+          accent: posterAccent,
+        });
+        onSaveCreative({
+          type: 'ai-generated',
+          promptText: prompt,
+          previewUrl,
+          title: posterFields.company.trim() || 'AI-poster',
+          subtitle: posterFields.slogan.trim() || prompt,
+          verifiedOk: true,
+        });
+      } catch {
+        setGenError('Kon de poster niet samenstellen. Probeer het opnieuw.');
+      } finally {
+        setIsSaving(false);
+      }
     } else if (activeTab === 'verify' && verificationResult && verifyFile) {
       onSaveCreative({
         type: 'verified',
@@ -217,26 +194,8 @@ export default function AICreationModal({
     }
   };
 
-  const fullscreenOption = generatedOptions?.find((o) => o.id === fullscreenOptionId) ?? null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Fullscreen poster preview + editor */}
-      {fullscreenOption && (
-        <PosterFullscreenEditor
-          location={location}
-          design={fullscreenOption}
-          onClose={() => setFullscreenOptionId(null)}
-          onApply={(updated) => {
-            setGeneratedOptions((prev) =>
-              prev ? prev.map((o) => (o.id === updated.id ? updated : o)) : prev
-            );
-            setSelectedOptionId(updated.id);
-            setFullscreenOptionId(null);
-          }}
-        />
-      )}
-
       {/* Backdrop */}
       <div className="absolute inset-0 bg-ink/50 backdrop-blur-xs" onClick={onClose} />
 
@@ -381,16 +340,16 @@ export default function AICreationModal({
           {/* TAB 2: AI GENERATE POSTERS */}
           {activeTab === 'generate' && (
             <div className="space-y-5">
-              <form onSubmit={handleGenerateDesigns} className="space-y-3">
+              <form onSubmit={handleGenerate} className="space-y-3">
                 <label className="block text-xs font-semibold text-mist">
-                  Beschrijf wat je wilt promoten (onze AI ontwerpt direct een passende poster):
+                  Beschrijf je product of aanbieding — de AI maakt 3 fotorealistische achtergronden zonder tekst:
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Bijv. Pizza Margherita 1+1 gratis deze vrijdag bij Bella Italia..."
+                    placeholder="Bijv. verse broodjes en croissants bij een gezellige bakkerij..."
                     className="flex-1 bg-white border border-line rounded-card-sm px-4 py-3 text-ink text-xs placeholder-mist-2 focus:outline-none focus:border-cobalt focus:ring-1 focus:ring-cobalt shadow-soft"
                     disabled={isGenerating}
                   />
@@ -407,6 +366,7 @@ export default function AICreationModal({
                     <span>Ontwerp</span>
                   </button>
                 </div>
+                <p className="text-[11px] text-mist-2">1 klik genereert <b className="text-mist font-semibold">3 achtergronden</b> om uit te kiezen.</p>
               </form>
 
               {/* Generating Loader */}
@@ -423,85 +383,67 @@ export default function AICreationModal({
                 </div>
               )}
 
-              {/* Generated Options List */}
-              {generatedOptions && !isGenerating && (
-                <div className="space-y-4">
-                  <div className="text-xs font-bold text-mist">
-                    Kies een van de gegenereerde ontwerpen — of bekijk het beeldvullend en pas het aan:
-                  </div>
+              {/* Error (e.g. running plain `vite dev` without functions) */}
+              {genError && !isGenerating && (
+                <div className="flex items-start gap-2 bg-amber-soft border border-amber-line text-amber-deep rounded-card-sm p-3.5 text-xs font-medium">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{genError}</span>
+                </div>
+              )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {generatedOptions.map((opt) => {
-                      const isSelected = selectedOptionId === opt.id;
-                      const alignItems = opt.align === 'left' ? 'items-start text-left' : opt.align === 'right' ? 'items-end text-right' : 'items-center text-center';
+              {/* 3 textless background variants — choose one */}
+              {generatedImages.length > 0 && !isGenerating && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-mist">Kies je achtergrond:</span>
+                    <button
+                      type="button"
+                      onClick={handleGenerate}
+                      className="text-[11px] font-bold text-cobalt hover:text-cobalt-deep inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Opnieuw genereren
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {generatedImages.map((url, i) => {
+                      const isSel = selectedImage === url;
                       return (
-                        <div
-                          key={opt.id}
-                          onClick={() => setSelectedOptionId(opt.id)}
-                          className={`group p-3 rounded-card-sm border text-left flex flex-col justify-between h-56 transition-all relative overflow-hidden cursor-pointer ${
-                            isSelected
-                              ? 'bg-paper-2 border-cobalt ring-2 ring-cobalt/10 shadow-soft'
-                              : 'bg-white border-line hover:border-cobalt shadow-soft'
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setSelectedImage(url)}
+                          className={`group relative rounded-card-sm overflow-hidden border-2 transition-all cursor-pointer ${
+                            posterRatio.key === 'abri' ? 'aspect-[2/3]' : 'aspect-[9/16]'
+                          } ${
+                            isSel ? 'border-cobalt ring-2 ring-cobalt/20 shadow-soft' : 'border-line hover:border-cobalt'
                           }`}
                         >
-                          {/* Inner poster mockup display */}
-                          <div className={`w-full h-36 rounded-lg ${opt.bgColor} p-3 flex flex-col justify-between shadow-inner relative overflow-hidden ${alignItems}`}>
-                            {opt.badgeText && (
-                              <span className="absolute top-1.5 right-1.5 bg-cobalt text-white text-[7px] font-bold px-1 py-0.5 rounded shadow">
-                                {opt.badgeText}
-                              </span>
-                            )}
-                            <div className="space-y-1 w-full">
-                              <h5 className={`text-sm font-extrabold tracking-tight ${opt.textColor} uppercase font-sans break-words leading-tight`}>
-                                {opt.title}
-                              </h5>
-                              <p className={`text-[7px] ${opt.textColor} opacity-80 leading-normal font-sans line-clamp-3`}>
-                                {opt.subtitle}
-                              </p>
-                            </div>
-
-                            {/* Tiny mock footer */}
-                            <div className={`flex justify-between items-center text-[5px] ${opt.textColor} opacity-50 border-t border-current/20 pt-1 w-full`}>
-                              <span>GLOBAL AD</span>
-                              <span>{location.city.toUpperCase()}</span>
-                            </div>
-
-                            {/* Fullscreen affordance */}
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); setSelectedOptionId(opt.id); setFullscreenOptionId(opt.id); }}
-                              title="Beeldvullend bekijken & aanpassen"
-                              className="absolute bottom-1.5 right-1.5 bg-white/85 hover:bg-white text-ink rounded-md p-1 shadow opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
-                            >
-                              <Maximize2 className="w-3 h-3" />
-                            </button>
-                          </div>
-
-                          <div className="mt-2.5 flex justify-between items-center w-full">
-                            <span className="text-[10px] font-bold text-mist">{opt.styleName}</span>
-                            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                              isSelected ? 'border-cobalt bg-cobalt' : 'border-line bg-white'
-                            }`}>
-                              {isSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
-                            </div>
-                          </div>
-                        </div>
+                          <img src={url} alt={`Achtergrond ${i + 1}`} className="absolute inset-0 w-full h-full object-cover" />
+                          {isSel && (
+                            <span className="absolute top-1.5 right-1.5 bg-cobalt text-white rounded-full p-0.5 shadow">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </span>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
-
-                  {/* Prominent fullscreen CTA for the selected design */}
-                  {selectedOptionId && (
-                    <button
-                      type="button"
-                      onClick={() => setFullscreenOptionId(selectedOptionId)}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-full border border-cobalt-soft bg-cobalt-soft hover:bg-cobalt-soft text-cobalt text-xs font-bold transition-all cursor-pointer"
-                    >
-                      <Maximize2 className="w-4 h-4" />
-                      Geselecteerd ontwerp beeldvullend bekijken &amp; aanpassen
-                    </button>
-                  )}
+                  <p className="text-[11px] text-mist-2">Deze achtergronden zijn tekstloos — jouw scherpe tekst komt eronder.</p>
                 </div>
+              )}
+
+              {/* Step B — sharp text + logo overlay on the chosen background */}
+              {selectedImage && !isGenerating && (
+                <PosterComposer
+                  backgroundUrl={selectedImage}
+                  ratio={posterRatio}
+                  fields={posterFields}
+                  onFieldsChange={setPosterFields}
+                  preset={posterPreset}
+                  onPresetChange={setPosterPreset}
+                  accent={posterAccent}
+                  onAccentChange={setPosterAccent}
+                />
               )}
             </div>
           )}
@@ -608,19 +550,21 @@ export default function AICreationModal({
           <button
             onClick={handleSave}
             disabled={
+              isSaving ||
               (activeTab === 'upload' && uploadStatus !== 'completed') ||
-              (activeTab === 'generate' && !selectedOptionId) ||
+              (activeTab === 'generate' && !generateReady) ||
               (activeTab === 'verify' && !verifyFile)
             }
             className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              (activeTab === 'upload' && uploadStatus === 'completed') ||
-              (activeTab === 'generate' && selectedOptionId) ||
-              (activeTab === 'verify' && verifyFile)
+              !isSaving && (
+                (activeTab === 'upload' && uploadStatus === 'completed') ||
+                (activeTab === 'generate' && generateReady) ||
+                (activeTab === 'verify' && verifyFile))
                 ? 'bg-cobalt hover:bg-cobalt-deep text-white shadow-soft'
                 : 'bg-paper-2 text-mist-2 cursor-not-allowed border border-line'
             }`}
           >
-            Creatie opslaan en toepassen
+            {isSaving ? 'Poster samenstellen…' : 'Creatie opslaan en toepassen'}
           </button>
         </div>
 
