@@ -18,6 +18,10 @@ interface CartAndCheckoutProps {
   onClearCart: () => void;
 }
 
+// A creative's previewUrl can be either a Tailwind bg class (legacy CSS poster)
+// or an actual image URL (data:/http, e.g. a server-generated poster).
+const isImageUrl = (u?: string): boolean => !!u && (u.startsWith('data:') || u.startsWith('http'));
+
 // Reconstruct an editable PosterDesign from a saved AI-generated creative.
 function creativeToDesign(locationId: string, creative: NonNullable<CartItem['creative']>): PosterDesign {
   return {
@@ -243,13 +247,20 @@ export default function CartAndCheckout({
                           type="button"
                           onClick={() => setFullscreenLocationId(item.location.id)}
                           title="Beeldvullend bekijken & aanpassen"
-                          className={`group relative w-11 h-16 shrink-0 rounded-md overflow-hidden shadow ring-1 ring-black/5 flex flex-col justify-center p-1 cursor-pointer ${item.creative.previewUrl} ${
+                          className={`group relative w-11 h-16 shrink-0 rounded-md overflow-hidden shadow ring-1 ring-black/5 flex flex-col justify-center p-1 cursor-pointer ${
+                            isImageUrl(item.creative.previewUrl) ? 'bg-paper-2' : item.creative.previewUrl
+                          } ${
                             item.creative.align === 'left' ? 'items-start text-left' : item.creative.align === 'right' ? 'items-end text-right' : 'items-center text-center'
                           }`}
+                          style={isImageUrl(item.creative.previewUrl)
+                            ? { backgroundImage: `url("${item.creative.previewUrl}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                            : undefined}
                         >
-                          <span className={`text-[6px] font-extrabold uppercase leading-[1.05] break-words ${item.creative.textColor}`}>
-                            {item.creative.title}
-                          </span>
+                          {!isImageUrl(item.creative.previewUrl) && (
+                            <span className={`text-[6px] font-extrabold uppercase leading-[1.05] break-words ${item.creative.textColor}`}>
+                              {item.creative.title}
+                            </span>
+                          )}
                           <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
                             <Maximize2 className="w-3 h-3 text-white opacity-0 group-hover:opacity-100" />
                           </span>

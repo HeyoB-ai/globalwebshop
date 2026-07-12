@@ -31,6 +31,10 @@ export const POSTER_STYLES: { name: string; bgColor: string; textColor: string }
   { name: 'Zuiver wit', bgColor: 'bg-white', textColor: 'text-slate-900' },
 ];
 
+// A bgColor can be a Tailwind class (legacy CSS poster) or an image URL
+// (data:/http, e.g. a server-generated poster).
+const isImageUrl = (u: string): boolean => u.startsWith('data:') || u.startsWith('http');
+
 // Parse "1080 x 1920 pixels..." / "118.5 x 175 cm..." into an aspect ratio.
 function parseAspect(dimensions: string): { w: number; h: number } {
   const m = dimensions.match(/([\d.]+)\s*[x×]\s*([\d.]+)/i);
@@ -75,7 +79,7 @@ export default function PosterFullscreenEditor({ location, design, onApply, onCl
           initial={{ opacity: 0.6, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.25 }}
-          className={`relative rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 ${draft.bgColor}`}
+          className={`relative rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/10 ${isImageUrl(draft.bgColor) ? 'bg-slate-950' : draft.bgColor}`}
           style={{
             aspectRatio: `${w} / ${h}`,
             height: 'min(100%, 82vh)',
@@ -83,7 +87,11 @@ export default function PosterFullscreenEditor({ location, design, onApply, onCl
             containerType: 'size',
           }}
         >
+          {isImageUrl(draft.bgColor) && (
+            <img src={draft.bgColor} alt="Gegenereerde poster" className="absolute inset-0 w-full h-full object-cover" />
+          )}
           {/* Full poster content, scaled with container-query width units */}
+          {!isImageUrl(draft.bgColor) && (
           <div className={`absolute inset-0 flex flex-col justify-between ${alignClass}`} style={{ padding: '7cqw' }}>
             {/* Badge */}
             <div className="w-full flex justify-between items-start" style={{ minHeight: '1px' }}>
@@ -123,6 +131,7 @@ export default function PosterFullscreenEditor({ location, design, onApply, onCl
               <span className="font-mono">{location.city.toUpperCase()}</span>
             </div>
           </div>
+          )}
         </motion.div>
       </div>
 
