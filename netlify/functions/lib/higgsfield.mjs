@@ -73,13 +73,14 @@ function httpFriendly(status) {
  * Start a real text-to-image generation (non-blocking).
  * Returns { requestId, status }. Throws a friendly Error on failure.
  */
-export async function startLiveGeneration(prompt, aspectRatio) {
+export async function startLiveGeneration(prompt, aspectRatio, negativePrompt) {
   const model = process.env.HF_IMAGE_MODEL || DEFAULT_MODEL;
   const body = {
     prompt,
     aspect_ratio: aspectRatio || DEFAULT_ASPECT,
     resolution: process.env.HF_IMAGE_RESOLUTION || DEFAULT_RESOLUTION,
   };
+  if (negativePrompt) body.negative_prompt = negativePrompt; // Soul accepts this (verified live)
 
   let res;
   try {
