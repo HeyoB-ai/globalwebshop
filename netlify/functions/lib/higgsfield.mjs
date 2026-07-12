@@ -114,8 +114,38 @@ export async function startLiveGeneration(prompt, aspectRatio) {
 }
 
 /**
- * Poll a live job's status and return { status, imageUrl? , error? } in the
- * exact shape the mock returns, so the client layer needs no changes.
+ * Start `count` generations in parallel (Promise.allSettled so one failure
+ * doesn't sink the rest). Returns the array of started request_ids.
+ * Throws only if none could be started.
+ */
+export async function startLiveGenerationBatch(prompt, aspectRatio, count = 3) {
+  const results = await Promise.allSettled(
+    Array.from({ length: count }, () => startLiveGeneration(prompt, aspectRatio)),
+  );
+  const ids = results.filter((r) => r.status === 'fulfilled').map((r) => r.value.requestId);
+  if (ids.length === 0) {
+    const rejected = results.find((r) => r.status === 'rejected');
+    throw new Error(rejected?.reason instanceof Error ? rejected.reason.message : 'Kon de AI-generatie niet starten.');
+  }
+  return ids;
+}
+
+/**
+ * Poll several live jobs and aggregate into { status, imageUrls?, error? }.
+ * - in_progress while any job is still running
+ * - completed once all are terminal and at least one produced an image
+ * - failed only if every job failed
+ */
+export async function getLiveStatusMulti(ids) {
+  const results = await Promise.all((ids || []).map((id) => getLiveStatus(id)));
+  if (results.some((r) => r.status === 'in_progress')) return { status: 'in_progress' };
+  const imageUrls = results.filter((r) => r.status === 'completed' && r.imageUrl).map((r) => r.imageUrl);
+  if (imageUrls.length > 0) return { status: 'completed', imageUrls };
+  return { status: 'failed', error: results.find((r) => r.error)?.error || 'De generatie is mislukt.' };
+}
+
+/**
+ * Poll a single live job's status and return { status, imageUrl? , error? }.
  */
 export async function getLiveStatus(requestId) {
   const url = `${baseUrl()}/requests/${requestId}/status`;

@@ -61,6 +61,15 @@ format is identical, no code change needed.
 Config knobs: `HF_IMAGE_MODEL` (model_id), `HF_IMAGE_RESOLUTION` (model-dependent,
 e.g. `720p`/`1080p` for Soul), `HF_DEBUG` (`1` to log failures server-side).
 
+### Cost — 3 variants per request
+
+Each "genereren" click makes **3 textless background variants = 3 parallel jobs
+= 3× credits** (the user gets 3 options to choose from). `generate-creative`
+starts the 3 jobs with `Promise.allSettled`; `creative-status` aggregates them
+and returns `{ status, imageUrls: [...] }`. This 3× multiplier is the key input
+for the later cost-guarding step (e.g. per-user rate limits or a variant count
+knob).
+
 ## Credentials — never in code or git
 
 Higgsfield auth is a **key pair**: `HF_API_KEY` + `HF_API_SECRET`. They are read

@@ -1,77 +1,51 @@
-// Netlify Function v2 — poll a creative-generation job.
+// Netlify Function v2 — poll a creative-generation job (3 variants).
 //
-// "mock." jobs (default): decodes the stateless jobId produced by
-// generate-creative. Within ~3.5s of the job start it reports "in_progress";
-// after that it returns "completed" with a server-rendered SVG poster (portrait,
-// cobalt/amber house style) carrying the prompt text — as a data:image/svg+xml
-// data-URI.
+// "mock." jobs (default): decode the stateless jobId; within ~3.5s report
+// "in_progress", then "completed" with THREE slightly different textless SVG
+// background variants (data:image/svg+xml). No text is rendered — the concept is
+// a background; our own headline is overlaid later (step B).
 //
-// "live." jobs: polls the real Higgsfield job status and returns { status,
-// imageUrl } in the exact same shape, so the client layer needs no changes.
+// "live." jobs: poll the 3 real Higgsfield jobs and return their image URLs.
+//
+// Both return { status, imageUrls: [...] } — the same shape, so the client is
+// mode-agnostic.
 
-import { getLiveStatus } from './lib/higgsfield.mjs';
+import { getLiveStatusMulti } from './lib/higgsfield.mjs';
 
-function escapeXml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-  ));
-}
+// Three calm, textless portrait background palettes for mock mode.
+const PALETTES = [
+  { a: '#1D46C4', b: '#2456E6', c: '#0A0F1E', blob: 'rgba(255,255,255,0.18)' }, // cobalt night
+  { a: '#DE8A06', b: '#B4470A', c: '#2A0F04', blob: 'rgba(255,220,150,0.20)' }, // warm amber
+  { a: '#0E9F6E', b: '#0B6E63', c: '#04231F', blob: 'rgba(200,255,235,0.16)' }, // teal green
+];
 
-// Greedy word-wrap into at most `maxLines` lines of ~`max` characters.
-function wrapText(text, max, maxLines) {
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines = [];
-  let line = '';
-  for (const w of words) {
-    if (line && (line + ' ' + w).length > max) {
-      lines.push(line);
-      line = w;
-    } else {
-      line = line ? line + ' ' + w : w;
-    }
-    if (lines.length >= maxLines) break;
-  }
-  if (line && lines.length < maxLines) lines.push(line);
-  if (lines.length === maxLines && words.length > lines.join(' ').split(' ').length) {
-    lines[maxLines - 1] = lines[maxLines - 1].replace(/.{0,2}$/, '…');
-  }
-  return lines;
-}
-
-function buildPosterSVG(prompt) {
-  const W = 600;
-  const H = 800;
-  const headline = (prompt.trim() || 'Jouw aanbieding hier').toUpperCase();
-  const lines = wrapText(headline, 14, 6);
-  // Size the headline down for longer lines so it never clips the 600px canvas.
-  const longest = Math.max(1, ...lines.map((l) => l.length));
-  const fontSize = Math.max(30, Math.min(52, Math.floor(520 / (longest * 0.66))));
-  const lineHeight = Math.round(fontSize * 1.15);
-  const startY = 300;
-
-  const tspans = lines
-    .map((ln, i) => `<tspan x="60" y="${startY + i * lineHeight}">${escapeXml(ln)}</tspan>`)
-    .join('');
-
-  const svg =
+function buildBackgroundSVG(variant) {
+  const W = 720;
+  const H = 1280; // 9:16 portrait
+  const p = PALETTES[variant % PALETTES.length];
+  return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
     `<defs>` +
-    `<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">` +
-    `<stop offset="0" stop-color="#1D46C4"/>` +
-    `<stop offset="0.55" stop-color="#2456E6"/>` +
-    `<stop offset="1" stop-color="#0A0F1E"/>` +
+    `<linearGradient id="g" x1="0" y1="0" x2="0.7" y2="1">` +
+    `<stop offset="0" stop-color="${p.a}"/><stop offset="0.55" stop-color="${p.b}"/><stop offset="1" stop-color="${p.c}"/>` +
     `</linearGradient>` +
+    `<radialGradient id="b" cx="0.32" cy="0.28" r="0.62">` +
+    `<stop offset="0" stop-color="${p.blob}"/><stop offset="1" stop-color="rgba(0,0,0,0)"/>` +
+    `</radialGradient>` +
+    `<radialGradient id="v" cx="0.5" cy="0.5" r="0.75">` +
+    `<stop offset="0.55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,0.45)"/>` +
+    `</radialGradient>` +
     `</defs>` +
-    `<rect width="${W}" height="${H}" fill="url(#bg)"/>` +
-    `<rect x="60" y="80" width="72" height="10" rx="5" fill="#DE8A06"/>` +
-    `<text x="60" y="128" font-family="Poppins, Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="3" fill="#FFFFFF" opacity="0.85">GLOBAL · BUITENRECLAME</text>` +
-    `<text font-family="Poppins, Arial, sans-serif" font-weight="800" font-size="${fontSize}" fill="#FFFFFF">${tspans}</text>` +
-    `<rect x="60" y="${H - 150}" width="${W - 120}" height="2" fill="#FFFFFF" opacity="0.3"/>` +
-    `<text x="60" y="${H - 104}" font-family="Poppins, Arial, sans-serif" font-size="24" font-weight="700" fill="#DE8A06">Nu te zien op straat</text>` +
-    `<text x="60" y="${H - 68}" font-family="Inter, Arial, sans-serif" font-size="19" fill="#FFFFFF" opacity="0.8">Vaak live vanaf morgen · vanaf €250</text>` +
-    `</svg>`;
+    `<rect width="${W}" height="${H}" fill="url(#g)"/>` +
+    `<rect width="${W}" height="${H}" fill="url(#b)"/>` +
+    `<circle cx="${150 + variant * 70}" cy="${360 + variant * 140}" r="${240 - variant * 24}" fill="url(#b)" opacity="0.55"/>` +
+    `<rect width="${W}" height="${H}" fill="url(#v)"/>` +
+    `</svg>`
+  );
+}
 
-  return svg;
+function mockImageUrl(variant) {
+  return 'data:image/svg+xml;base64,' + Buffer.from(buildBackgroundSVG(variant), 'utf8').toString('base64');
 }
 
 export default async (req) => {
@@ -91,7 +65,7 @@ export default async (req) => {
     return Response.json({ status: 'failed', error: 'invalid jobId' }, { status: 400 });
   }
 
-  // LIVE job → poll the real Higgsfield status.
+  // LIVE job → poll the real Higgsfield jobs (3 request_ids).
   if (jobId.startsWith('live.')) {
     let liveMeta;
     try {
@@ -100,7 +74,7 @@ export default async (req) => {
       return Response.json({ status: 'failed', error: 'malformed jobId' }, { status: 400 });
     }
     try {
-      const result = await getLiveStatus(liveMeta.id);
+      const result = await getLiveStatusMulti(liveMeta.ids || []);
       return Response.json(result);
     } catch {
       return Response.json({ status: 'failed', error: 'Kon de status niet ophalen.' }, { status: 502 });
@@ -123,8 +97,8 @@ export default async (req) => {
     return Response.json({ status: 'in_progress' });
   }
 
-  const svg = buildPosterSVG(String(meta.prompt ?? ''));
-  const imageUrl = 'data:image/svg+xml;base64,' + Buffer.from(svg, 'utf8').toString('base64');
+  const n = Math.max(1, Math.min(3, Number(meta.n) || 3));
+  const imageUrls = Array.from({ length: n }, (_, i) => mockImageUrl(i));
 
-  return Response.json({ status: 'completed', imageUrl });
+  return Response.json({ status: 'completed', imageUrls });
 };
