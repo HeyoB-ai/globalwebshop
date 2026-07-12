@@ -1,10 +1,15 @@
 // Netlify Function v2 — poll a creative-generation job.
 //
-// MOCK mode (Higgsfield step 1): decodes the stateless jobId produced by
+// "mock." jobs (default): decodes the stateless jobId produced by
 // generate-creative. Within ~3.5s of the job start it reports "in_progress";
 // after that it returns "completed" with a server-rendered SVG poster (portrait,
 // cobalt/amber house style) carrying the prompt text — as a data:image/svg+xml
-// data-URI. So the "result" genuinely comes from the server, not the client.
+// data-URI.
+//
+// "live." jobs: polls the real Higgsfield job status and returns { status,
+// imageUrl } in the exact same shape, so the client layer needs no changes.
+
+import { getLiveStatus } from './lib/higgsfield.mjs';
 
 function escapeXml(s) {
   return String(s).replace(/[&<>"']/g, (c) => (
@@ -82,7 +87,27 @@ export default async (req) => {
     jobId = new URL(req.url).searchParams.get('jobId');
   }
 
-  if (typeof jobId !== 'string' || !jobId.startsWith('mock.')) {
+  if (typeof jobId !== 'string') {
+    return Response.json({ status: 'failed', error: 'invalid jobId' }, { status: 400 });
+  }
+
+  // LIVE job → poll the real Higgsfield status.
+  if (jobId.startsWith('live.')) {
+    let liveMeta;
+    try {
+      liveMeta = JSON.parse(Buffer.from(jobId.slice(5), 'base64url').toString('utf8'));
+    } catch {
+      return Response.json({ status: 'failed', error: 'malformed jobId' }, { status: 400 });
+    }
+    try {
+      const result = await getLiveStatus(liveMeta.id, liveMeta.u);
+      return Response.json(result);
+    } catch {
+      return Response.json({ status: 'failed', error: 'Kon de status niet ophalen.' }, { status: 502 });
+    }
+  }
+
+  if (!jobId.startsWith('mock.')) {
     return Response.json({ status: 'failed', error: 'invalid jobId' }, { status: 400 });
   }
 
