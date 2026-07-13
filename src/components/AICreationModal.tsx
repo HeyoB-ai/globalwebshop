@@ -26,6 +26,12 @@ interface AICreationModalProps {
     align?: 'left' | 'center' | 'right';
     titleScale?: number;
     badgeText?: string;
+    poster?: {
+      fields: PosterFields;
+      template: TemplateKey;
+      theme: ThemeKey;
+      photoUrl: string | null;
+    };
   }) => void;
   currentCreative?: any;
 }
@@ -181,6 +187,13 @@ export default function AICreationModal({
           title: posterFields.headline.trim() || 'AI-poster',
           subtitle: posterFields.subline.trim() || posterFields.offer.trim() || prompt,
           verifiedOk: true,
+          // Persist the editable design so the cart can re-open the live composer.
+          poster: {
+            fields: posterFields,
+            template: posterTemplate,
+            theme: posterTheme,
+            photoUrl: selectedImage,
+          },
         });
       } catch {
         setGenError('Kon de poster niet samenstellen. Probeer het opnieuw.');

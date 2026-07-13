@@ -25,6 +25,7 @@ interface Props {
   onTemplateChange: (t: TemplateKey) => void;
   theme: ThemeKey;
   onThemeChange: (t: ThemeKey) => void;
+  previewWidth?: number;
 }
 
 /** A self-contained canvas that renders one poster (used for the big preview
@@ -63,6 +64,7 @@ function PosterCanvas({
 
 export default function PosterComposer({
   photoUrl, ratio, fields, onFieldsChange, template, onTemplateChange, theme, onThemeChange,
+  previewWidth = PREVIEW_W,
 }: Props) {
   const [photoImg, setPhotoImg] = useState<HTMLImageElement | null>(null);
   const [logoImg, setLogoImg] = useState<HTMLImageElement | null>(null);
@@ -118,8 +120,8 @@ export default function PosterComposer({
       <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,240px)_1fr] gap-5 items-start">
         {/* Big live preview */}
         <div className="space-y-2">
-          <div className="rounded-card-sm overflow-hidden border border-line shadow-soft bg-paper-2 mx-auto" style={{ maxWidth: PREVIEW_W }}>
-            <PosterCanvas width={PREVIEW_W} ratio={ratio} fields={fields} template={template} theme={theme} photo={photoImg} logo={logoImg} />
+          <div className="rounded-card-sm overflow-hidden border border-line shadow-soft bg-paper-2 mx-auto" style={{ maxWidth: previewWidth }}>
+            <PosterCanvas width={previewWidth} ratio={ratio} fields={fields} template={template} theme={theme} photo={photoImg} logo={logoImg} />
           </div>
           {activeTpl && <p className="text-[10px] text-mist-2 text-center leading-snug px-2">{activeTpl.hint}</p>}
         </div>

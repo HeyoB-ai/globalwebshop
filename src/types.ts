@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { PosterFields, TemplateKey, ThemeKey } from './lib/posterComposer';
+
 export type LocationType = 'abri' | 'digital';
 
 export interface LocationSpecs {
@@ -66,5 +68,13 @@ export interface CartItem {
     align?: 'left' | 'center' | 'right';
     titleScale?: number;
     badgeText?: string;
+    // Editable poster design (AI-generated creatives) — lets the cart re-open the
+    // real template composer and live-edit, then re-export the PNG previewUrl.
+    poster?: {
+      fields: PosterFields;
+      template: TemplateKey;
+      theme: ThemeKey;
+      photoUrl: string | null;
+    };
   };
 }

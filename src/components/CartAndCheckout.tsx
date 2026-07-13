@@ -8,6 +8,7 @@ import { CartItem, Location } from '../types';
 import { ShoppingBag, Calendar, Euro, FileCheck, HelpCircle, ArrowLeft, Send, Sparkles, Building, Mail, Phone, User, CheckCircle, FileText, Download, Maximize2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import PosterFullscreenEditor, { PosterDesign } from './PosterFullscreenEditor';
+import PosterEditor from './PosterEditor';
 
 interface CartAndCheckoutProps {
   cartItems: CartItem[];
@@ -151,8 +152,29 @@ export default function CartAndCheckout({
 
   return (
     <div className="space-y-6">
-      {/* Fullscreen preview + editor for a saved AI creative */}
-      {fullscreenItem?.creative?.type === 'ai-generated' && (
+      {/* Live editor for a saved AI creative — uses the real template composer so
+          every field/theme/template change re-renders the poster immediately. */}
+      {fullscreenItem?.creative?.type === 'ai-generated' && fullscreenItem.creative.poster && (
+        <PosterEditor
+          location={fullscreenItem.location}
+          payload={fullscreenItem.creative.poster}
+          onClose={() => setFullscreenLocationId(null)}
+          onApply={(payload, previewUrl) => {
+            onUpdateCreative(fullscreenItem.location.id, {
+              ...fullscreenItem.creative,
+              type: 'ai-generated',
+              previewUrl,
+              poster: payload,
+              title: payload.fields.headline.trim() || 'AI-poster',
+              subtitle: payload.fields.subline.trim() || payload.fields.offer.trim() || fullscreenItem.creative?.subtitle || '',
+            });
+            setFullscreenLocationId(null);
+          }}
+        />
+      )}
+
+      {/* Fallback: legacy CSS-poster editor for older creatives without a design payload */}
+      {fullscreenItem?.creative?.type === 'ai-generated' && !fullscreenItem.creative.poster && (
         <PosterFullscreenEditor
           location={fullscreenItem.location}
           design={creativeToDesign(fullscreenItem.location.id, fullscreenItem.creative)}
