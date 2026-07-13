@@ -18,57 +18,55 @@ const ALLOWED_RATIOS = new Set(['9:16', '2:3', '3:4']);
 const DEFAULT_RATIO = '9:16';
 
 // Per-variant hints so the 3 results genuinely differ — each is a distinct
-// real-photography setup (light / angle / composition), and each keeps the
-// negative space in a different corner so at least one nearly always lands.
+// light / angle / moment of the SAME lively scene (never emptying it out).
 const VARIATION_HINTS = [
-  'Soft directional studio softbox light from the left, near-frontal eye-level composition, ' +
-    '85mm lens; keep the lower-left third as calm empty space.',
-  'Warm natural golden-hour backlight with a gentle glow, slight three-quarter angle, ' +
-    'very shallow depth of field; keep the left side as calm empty space.',
-  'Moody low-key side light with soft shadows, intimate overhead flat-lay perspective, ' +
-    'deep background blur; keep the bottom third as calm empty space.',
+  'Warm golden-hour light, eye-level angle, the scene bright, sunny and inviting.',
+  'Soft natural daylight, a slightly wider angle that shows more of the surroundings.',
+  'Cozy late-afternoon glow, a closer three-quarter angle on the hero subject with the lively scene softly blurred behind.',
 ];
 
 // Concepts to actively keep OUT of the image. Two jobs: (1) suppress Soul's
-// text-proneness as hard as possible (fake letters/signage), and (2) steer away
-// from the plasticky, over-polished "generic AI" look toward real photography.
+// text-proneness (fake letters/signage), and (2) steer away from the plasticky,
+// over-polished "generic AI" look toward real photography. NOTE: nothing here
+// suppresses people or the scene — we WANT a full, lively environment.
 const NEGATIVE_PROMPT =
   // — no text / signage of any kind (the strongest lever against fake letters) —
   'text, letters, words, numbers, typography, captions, writing, characters, fonts, handwriting, ' +
   'signage, sign, signboard, billboard, chalkboard, blackboard, menu board, menu, poster, banner, ' +
   'label, printed label, jar label, product label, price tag, sticker, packaging text, logo, ' +
-  'watermark, brand name, shop name, storefront, shop facade, subtitles, ' +
+  'watermark, brand name, shop name, subtitles, ' +
   // — not a generic AI render; believable commercial photography only —
   'digital art, illustration, 3d render, cgi, render, painting, drawing, cartoon, anime, ' +
   'overly polished, plastic, waxy, glossy fake surfaces, oversaturated, harsh HDR, oversharpened, ' +
-  'over-processed, busy, cluttered, low-resolution, blurry subject, distorted, deformed, ugly';
+  'over-processed, low-resolution, blurry subject, distorted, deformed, ugly';
 
-// AI models can't render legible text, and shop/counter scenes make Soul paint
-// signs and chalkboards. So we brief it like a real photo shoot: the subject's
-// signature PRODUCTS as the single clear hero of a TEXTLESS commercial still
-// life (no shop/counter/board/label), lit and framed like editorial advertising
-// photography, with a calm rest zone for our own headline overlay (step B).
+// The user's description IS the scene. We render it in full — people, setting and
+// mood included — as a vibrant lifestyle advertising photograph, NOT a studio
+// still-life. We only keep text out of frame (Soul can't render real letters; the
+// sharp headline is overlaid later in step B) and add a light hint that there be a
+// slightly calmer area for that overlay — without emptying the scene.
 function buildBackgroundPrompt(userPrompt, variant) {
-  const subject = String(userPrompt || '').trim();
+  const scene = String(userPrompt || '').trim();
   const hint = VARIATION_HINTS[variant % VARIATION_HINTS.length];
   return (
-    // 1) Lead with the language of commercial photography so the model reaches
-    //    for a real shoot rather than a generic AI illustration.
-    `Professional advertising photograph of ${subject}, commercial product photography, editorial campaign style, ` +
-    `shot on a medium-format camera, 85mm lens, shallow depth of field, soft directional studio lighting and ` +
-    `natural golden-hour light, clean minimal composition with generous negative space, premium high-end brand ` +
-    `aesthetic, photorealistic, true-to-life colours, subtle natural imperfections, sharp focus on the subject ` +
-    `with a softly blurred background. ` +
-    // 2) Keep it calm: one clear subject, lots of empty room for the later headline.
-    `A single clear hero subject, calm and uncluttered, with plenty of quiet empty negative space where a headline ` +
-    `will be placed later. ${hint} ` +
-    // 3) Push away the AI look explicitly.
-    `Not digital art, not an illustration, not a 3D render or CGI; not overly polished, plastic, oversaturated or ` +
-    `HDR; a real, believable photograph with authentic materials and lifelike texture. ` +
-    // 4) Keep every trace of text/signage out of frame.
-    `No shop, no storefront, no counter, no menu board, no chalkboard, no billboards, no signs, and no jars or ` +
-    `packaging with labels. A completely wordless photograph — no text, letters, numbers, writing, signage, labels, ` +
-    `price tags, logos or watermark anywhere; every surface is blank.`
+    // 1) Take the whole description as the scene; keep any people/environment/mood
+    //    the user described (their own words carry who is in it — we don't inject
+    //    people, to avoid tripping the model's content filter).
+    `Vibrant lifestyle advertising photograph of ${scene}. ` +
+    `Render the full scene the description implies — including any people, surroundings and atmosphere it mentions — ` +
+    `as a lively, authentic real-life moment, never an isolated product on a plain background. ` +
+    // 2) Advertising-photography quality + a wholesome framing that keeps Soul's
+    //    safety filter from false-flagging ordinary lifestyle scenes.
+    `Warm natural light, golden hour, shallow depth of field, the main subject prominent and appealing in the ` +
+    `foreground, a lively authentic scene alive in the background, editorial commercial photography, photorealistic, ` +
+    `true-to-life colours, natural texture, a wholesome and family-friendly atmosphere with everyone tastefully and ` +
+    `fully dressed. ${hint} ` +
+    // 3) Light hint for our later text overlay — do NOT empty the scene.
+    `Compose so there is a slightly calmer, less busy area near the top or the bottom where a headline can be placed ` +
+    `later, while keeping the scene full, warm and lively. ` +
+    // 4) Text suppression stays — the only hard constraint.
+    `A completely wordless photograph — no text, letters, numbers, writing, signage, labels, price tags, logos or ` +
+    `watermark anywhere.`
   );
 }
 
