@@ -1,8 +1,12 @@
-import { MapPin, Plus, Check } from 'lucide-react';
-import type { Screen, Audience } from '../../data/screens';
+import { lazy, Suspense, useMemo, useState } from 'react';
+import { MapPin, Plus, Check, List, Map as MapIcon } from 'lucide-react';
+import { SCREENS, type Screen, type Audience } from '../../data/screens';
 import type { PlanResult } from '../../lib/campaignEngine';
 import { matchFactor } from '../../lib/campaignEngine';
 import { fmt, euro } from './useCountUp';
+
+// Heavy (maplibre-gl) — lazy-loaded so it stays out of the initial bundle.
+const ScreenMap = lazy(() => import('./ScreenMap'));
 
 interface PlanResultsProps {
   plan: PlanResult;
@@ -23,6 +27,9 @@ export default function PlanResults({
   const regionLabel = region === 'NL' ? 'heel Nederland' : region.replace(/^(prov|city):/, '');
   const count = plan.selected.length;
   const added = new Set(addedIds);
+
+  const [view, setView] = useState<'list' | 'map'>('list');
+  const selectedIds = useMemo(() => plan.selected.map((s) => s.id), [plan.selected]);
 
   return (
     <section className="results" id="results">
@@ -47,6 +54,42 @@ export default function PlanResults({
           </div>
         )}
 
+        {/* Lijst / Kaart view switch */}
+        <div className="viewswitch" role="tablist" aria-label="Weergave">
+          <button
+            role="tab"
+            aria-selected={view === 'list'}
+            className={`vbtn${view === 'list' ? ' on' : ''}`}
+            onClick={() => setView('list')}
+          >
+            <List size={15} strokeWidth={2.4} /> Lijst
+          </button>
+          <button
+            role="tab"
+            aria-selected={view === 'map'}
+            className={`vbtn${view === 'map' ? ' on' : ''}`}
+            onClick={() => setView('map')}
+          >
+            <MapIcon size={15} strokeWidth={2.4} /> Kaart
+          </button>
+        </div>
+
+        {view === 'map' && (
+          <Suspense fallback={<div className="maploading">Kaart laden…</div>}>
+            <ScreenMap
+              screens={SCREENS}
+              selectedIds={selectedIds}
+              addedIds={addedIds}
+              onAddScreen={onAddScreen}
+            />
+            <p className="mapnote">
+              {SCREENS.length} stationsschermen · jouw <b>{count}</b> geplande schermen staan in <span className="amberdot" /> amber. Klik een cluster om in te zoomen, klik een scherm voor details.
+            </p>
+          </Suspense>
+        )}
+
+        {view === 'list' && (
+        <>
         <div className="grid">
           {plan.selected.slice(0, 12).map((s) => {
             const mf = matchFactor(s, aud);
@@ -96,6 +139,8 @@ export default function PlanResults({
         <div className="more">
           {count > 12 ? `+ nog ${count - 12} schermen in je plan` : ''}
         </div>
+        </>
+        )}
       </div>
     </section>
   );

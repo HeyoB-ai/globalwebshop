@@ -185,6 +185,14 @@
 .gws-landing .card .addbtn.added { background: var(--ok-soft); color: var(--ok); box-shadow: none; }
 .gws-landing .more { margin-top: 28px; text-align: center; color: var(--mist); font-size: 14px; }
 
+/* list / map view switch */
+.gws-landing .viewswitch { display: inline-flex; gap: 4px; padding: 4px; background: var(--paper-2, #F4F1EA); border: 1px solid var(--line, #E6E1D6); border-radius: 999px; margin-bottom: 22px; }
+.gws-landing .vbtn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; border: 0; background: transparent; color: var(--mist); font-size: 13.5px; font-weight: 700; border-radius: 999px; cursor: pointer; }
+.gws-landing .vbtn.on { background: #fff; color: var(--cobalt); box-shadow: 0 2px 8px -3px rgba(0,0,0,.18); }
+.gws-landing .maploading { height: 520px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: var(--mist); background: var(--paper-2, #F4F1EA); border: 1px solid var(--line, #E6E1D6); font-size: 14px; }
+.gws-landing .mapnote { margin-top: 12px; color: var(--mist); font-size: 13px; }
+.gws-landing .mapnote .amberdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); vertical-align: middle; margin: 0 3px; }
+
 /* ---------- cinema strip (the one dark accent) ---------- */
 .gws-landing .cinema { position: relative; margin: clamp(60px, 8vw, 100px) 0 0; padding: clamp(70px, 9vw, 110px) 0; background: var(--night); overflow: hidden; }
 .gws-landing .cinema video, .gws-landing .cinema .cin-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
