@@ -17,37 +17,58 @@ const VARIANTS = 3;
 const ALLOWED_RATIOS = new Set(['9:16', '2:3', '3:4']);
 const DEFAULT_RATIO = '9:16';
 
-// Per-variant hints so the 3 results genuinely differ (angle / light / framing).
+// Per-variant hints so the 3 results genuinely differ — each is a distinct
+// real-photography setup (light / angle / composition), and each keeps the
+// negative space in a different corner so at least one nearly always lands.
 const VARIATION_HINTS = [
-  'Soft, near-frontal composition with gentle diffused daylight from the left and quiet empty space in the upper-left.',
-  'Slight three-quarter angle with warm golden-hour backlight, pronounced shallow depth of field, and quiet empty space along the top-left.',
-  'Intimate, close overhead-ish detail with moody warm side lighting, deep bokeh, and quiet empty space across the top.',
+  'Soft directional studio softbox light from the left, near-frontal eye-level composition, ' +
+    '85mm lens; keep the lower-left third as calm empty space.',
+  'Warm natural golden-hour backlight with a gentle glow, slight three-quarter angle, ' +
+    'very shallow depth of field; keep the left side as calm empty space.',
+  'Moody low-key side light with soft shadows, intimate overhead flat-lay perspective, ' +
+    'deep background blur; keep the bottom third as calm empty space.',
 ];
 
-// Concepts to actively keep OUT of the image. Soul is very text-prone; the
-// negative prompt is the strongest lever against fake letters/signage.
+// Concepts to actively keep OUT of the image. Two jobs: (1) suppress Soul's
+// text-proneness as hard as possible (fake letters/signage), and (2) steer away
+// from the plasticky, over-polished "generic AI" look toward real photography.
 const NEGATIVE_PROMPT =
+  // — no text / signage of any kind (the strongest lever against fake letters) —
   'text, letters, words, numbers, typography, captions, writing, characters, fonts, handwriting, ' +
-  'signage, sign, signboard, chalkboard, blackboard, menu board, menu, poster, banner, label, ' +
-  'jar label, product label, price tag, sticker, packaging text, logo, watermark, brand name, ' +
-  'shop name, storefront, shop facade, subtitles';
+  'signage, sign, signboard, billboard, chalkboard, blackboard, menu board, menu, poster, banner, ' +
+  'label, printed label, jar label, product label, price tag, sticker, packaging text, logo, ' +
+  'watermark, brand name, shop name, storefront, shop facade, subtitles, ' +
+  // — not a generic AI render; believable commercial photography only —
+  'digital art, illustration, 3d render, cgi, render, painting, drawing, cartoon, anime, ' +
+  'overly polished, plastic, waxy, glossy fake surfaces, oversaturated, harsh HDR, oversharpened, ' +
+  'over-processed, busy, cluttered, low-resolution, blurry subject, distorted, deformed, ugly';
 
 // AI models can't render legible text, and shop/counter scenes make Soul paint
-// signs and chalkboards. So we ask for the subject's signature PRODUCTS as the
-// hero of an atmospheric, TEXTLESS still-life (no shop/counter/board/label) with
-// calm negative space, and overlay our own headline later (step B).
+// signs and chalkboards. So we brief it like a real photo shoot: the subject's
+// signature PRODUCTS as the single clear hero of a TEXTLESS commercial still
+// life (no shop/counter/board/label), lit and framed like editorial advertising
+// photography, with a calm rest zone for our own headline overlay (step B).
 function buildBackgroundPrompt(userPrompt, variant) {
   const subject = String(userPrompt || '').trim();
   const hint = VARIATION_HINTS[variant % VARIATION_HINTS.length];
   return (
-    `A warm, atmospheric, photorealistic advertising background that puts the signature products of ${subject} ` +
-    `in the spotlight as the clear hero of the image, beautifully and abundantly styled on a rustic natural surface ` +
-    `with soft fabric and props. Moody artisanal lighting, deep creamy bokeh, shallow depth of field, premium and ` +
-    `inviting, calm and uncluttered. ${hint} ` +
-    `Keep generous soft negative space where a headline will be placed later. ` +
-    `No shop, no storefront, no counter, no menu board, no chalkboard, no signs, and no jars or packaging with labels. ` +
-    `A completely wordless photograph — no text, letters, numbers, writing, signage, labels, price tags, logos or ` +
-    `watermark anywhere; every surface is blank.`
+    // 1) Lead with the language of commercial photography so the model reaches
+    //    for a real shoot rather than a generic AI illustration.
+    `Professional advertising photograph of ${subject}, commercial product photography, editorial campaign style, ` +
+    `shot on a medium-format camera, 85mm lens, shallow depth of field, soft directional studio lighting and ` +
+    `natural golden-hour light, clean minimal composition with generous negative space, premium high-end brand ` +
+    `aesthetic, photorealistic, true-to-life colours, subtle natural imperfections, sharp focus on the subject ` +
+    `with a softly blurred background. ` +
+    // 2) Keep it calm: one clear subject, lots of empty room for the later headline.
+    `A single clear hero subject, calm and uncluttered, with plenty of quiet empty negative space where a headline ` +
+    `will be placed later. ${hint} ` +
+    // 3) Push away the AI look explicitly.
+    `Not digital art, not an illustration, not a 3D render or CGI; not overly polished, plastic, oversaturated or ` +
+    `HDR; a real, believable photograph with authentic materials and lifelike texture. ` +
+    // 4) Keep every trace of text/signage out of frame.
+    `No shop, no storefront, no counter, no menu board, no chalkboard, no billboards, no signs, and no jars or ` +
+    `packaging with labels. A completely wordless photograph — no text, letters, numbers, writing, signage, labels, ` +
+    `price tags, logos or watermark anywhere; every surface is blank.`
   );
 }
 
