@@ -8,7 +8,7 @@ import { Location } from '../types';
 import { X, UploadCloud, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileText, LayoutTemplate, ShieldCheck, Check, ShieldAlert, Maximize2 } from 'lucide-react';
 import { startCreative, pollCreative } from '../lib/creativeClient';
 import PosterComposer from './PosterComposer';
-import { ratioForType, composeToDataUrl, type PosterFields, type PresetKey, type AccentKey } from '../lib/posterComposer';
+import { ratioForType, composeToDataUrl, type PosterFields, type TemplateKey, type ThemeKey } from '../lib/posterComposer';
 
 interface AICreationModalProps {
   location: Location;
@@ -53,11 +53,14 @@ export default function AICreationModal({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
 
-  // Text-overlay (step B). Fields persist across "opnieuw genereren".
+  // Poster design (step B). Fields persist across "opnieuw genereren".
   const posterRatio = ratioForType(location.type);
-  const [posterFields, setPosterFields] = useState<PosterFields>({ company: '', slogan: '', price: '', url: '', logo: null });
-  const [posterPreset, setPosterPreset] = useState<PresetKey>('onder');
-  const [posterAccent, setPosterAccent] = useState<AccentKey>('cobalt');
+  const [posterFields, setPosterFields] = useState<PosterFields>({
+    kicker: '', headline: '', subline: '', offer: '', url: '', logo: null, uppercase: true,
+  });
+  const [posterTemplate, setPosterTemplate] = useState<TemplateKey>('foto-boven');
+  const [posterTheme, setPosterTheme] = useState<ThemeKey>('cobalt');
+  const [noPhotoMode, setNoPhotoMode] = useState(false); // design a graphic-only poster without generating a photo
   const [isSaving, setIsSaving] = useState(false);
 
   // Tab 3: AI Verification Checklist state
@@ -145,9 +148,10 @@ export default function AICreationModal({
     }, 2000);
   };
 
-  // Save selection back to parent
-  // The generate tab requires a chosen background + the two mandatory fields.
-  const generateReady = Boolean(selectedImage && posterFields.company.trim() && posterFields.slogan.trim());
+  // Save selection back to parent. The generate tab needs a headline and either
+  // a chosen photo OR the graphic-only (no-photo) mode.
+  const hasCanvas = Boolean(selectedImage || noPhotoMode);
+  const generateReady = Boolean(hasCanvas && posterFields.headline.trim());
 
   const handleSave = async () => {
     if (activeTab === 'upload' && uploadStatus === 'completed' && uploadFile) {
@@ -158,24 +162,24 @@ export default function AICreationModal({
         title: 'Eigen Upload',
         subtitle: uploadFile.name
       });
-    } else if (activeTab === 'generate' && selectedImage && generateReady) {
-      // Compose the final poster (background + sharp text/logo overlay) → PNG.
+    } else if (activeTab === 'generate' && generateReady) {
+      // Compose the final designed poster (template + theme + sharp text) → PNG.
       setIsSaving(true);
       setGenError(null);
       try {
         const previewUrl = await composeToDataUrl({
-          backgroundUrl: selectedImage,
+          photoUrl: selectedImage,
           ratio: posterRatio,
           fields: posterFields,
-          preset: posterPreset,
-          accent: posterAccent,
+          template: posterTemplate,
+          theme: posterTheme,
         });
         onSaveCreative({
           type: 'ai-generated',
           promptText: prompt,
           previewUrl,
-          title: posterFields.company.trim() || 'AI-poster',
-          subtitle: posterFields.slogan.trim() || prompt,
+          title: posterFields.headline.trim() || 'AI-poster',
+          subtitle: posterFields.subline.trim() || posterFields.offer.trim() || prompt,
           verifiedOk: true,
         });
       } catch {
@@ -366,7 +370,18 @@ export default function AICreationModal({
                     <span>Ontwerp</span>
                   </button>
                 </div>
-                <p className="text-[11px] text-mist-2">1 klik genereert <b className="text-mist font-semibold">3 achtergronden</b> om uit te kiezen.</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-mist-2">1 klik genereert <b className="text-mist font-semibold">3 achtergronden</b> om uit te kiezen.</p>
+                  {!noPhotoMode && generatedImages.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setNoPhotoMode(true); setPosterTemplate('grafisch'); }}
+                      className="text-[11px] font-bold text-cobalt hover:text-cobalt-deep whitespace-nowrap cursor-pointer"
+                    >
+                      Geen foto? Ontwerp puur grafisch →
+                    </button>
+                  )}
+                </div>
               </form>
 
               {/* Generating Loader */}
@@ -432,18 +447,34 @@ export default function AICreationModal({
                 </div>
               )}
 
-              {/* Step B — sharp text + logo overlay on the chosen background */}
-              {selectedImage && !isGenerating && (
-                <PosterComposer
-                  backgroundUrl={selectedImage}
-                  ratio={posterRatio}
-                  fields={posterFields}
-                  onFieldsChange={setPosterFields}
-                  preset={posterPreset}
-                  onPresetChange={setPosterPreset}
-                  accent={posterAccent}
-                  onAccentChange={setPosterAccent}
-                />
+              {/* Step B — design the poster (template + theme + sharp text) */}
+              {hasCanvas && !isGenerating && (
+                <div className="pt-1 border-t border-line">
+                  {noPhotoMode && !selectedImage && (
+                    <div className="flex items-center justify-between gap-2 mt-4 mb-1">
+                      <span className="text-[11px] font-bold text-mist">Puur grafische poster (zonder foto)</span>
+                      <button
+                        type="button"
+                        onClick={() => setNoPhotoMode(false)}
+                        className="text-[11px] font-bold text-mist-2 hover:text-ink cursor-pointer"
+                      >
+                        Toch een foto genereren
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-4">
+                    <PosterComposer
+                      photoUrl={selectedImage}
+                      ratio={posterRatio}
+                      fields={posterFields}
+                      onFieldsChange={setPosterFields}
+                      template={posterTemplate}
+                      onTemplateChange={setPosterTemplate}
+                      theme={posterTheme}
+                      onThemeChange={setPosterTheme}
+                    />
+                  </div>
+                </div>
               )}
             </div>
           )}
