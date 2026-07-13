@@ -15,11 +15,19 @@
 //           → { status, images:[{url}] }   (queued|in_progress|completed|failed|nsfw)
 // Verified live: 200 + a real image URL on higgsfield-ai/soul/standard.
 //
-// MODEL: configurable via HF_IMAGE_MODEL. Default higgsfield-ai/soul/standard
-// (proven working). Nano Banana Pro was requested, but its REST model_id is not
-// published in the docs and ~25 plausible slugs all returned 404 "Model not
-// found" — it does not appear to be exposed on the public REST API yet. Switch
-// HF_IMAGE_MODEL to it once the id is known (same request/response format).
+// MODEL: configurable via HF_IMAGE_MODEL — the ONLY knob needed to switch model.
+// All text-to-image models use the identical call above (flat body, same poll),
+// confirmed against the official Python SDK (higgsfield-client): it POSTs to
+// `{BASE}/{model_id}` with `json=arguments` (flat, no params wrapper) and polls
+// `/requests/{id}/status` — byte-for-byte what we do. So switching model = set
+// HF_IMAGE_MODEL, no code change.
+//
+// Confirmed REST model_ids (see README for notes):
+//   higgsfield-ai/soul/standard          Soul — portrait / studio still-life, text-prone. DEFAULT (verified 200).
+//   bytedance/seedream/v4/text-to-image  Seedream 4 — allround, better at scenes. (404 "Model not found" on our
+//                                         key: not provisioned for this account; enable it on the Higgsfield plan.)
+//   reve/text-to-image                   Reve — allround. (423 "model_blocked" on our key: exists but not enabled.)
+// Nano Banana Pro: no public REST model_id (~25 slugs → 404); not exposed yet.
 //
 // Credentials from HF_API_KEY / HF_API_SECRET (Netlify env vars) — never committed.
 

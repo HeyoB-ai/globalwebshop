@@ -48,6 +48,28 @@ Uses the **official** Higgsfield API (docs.higgsfield.ai/docs/how-to/introductio
   `{ status: "failed", error }` — never a stacktrace or a key. Set **`HF_DEBUG=1`**
   to log the full HTTP status + body **server-side** (terminal only); off by default.
 
+### Switching model — `HF_IMAGE_MODEL` is the only knob
+
+Every text-to-image model uses the **identical** call (flat body, same poll). This
+is confirmed against the official Python SDK (`higgsfield-client`): it POSTs to
+`{BASE}/{model_id}` with `json=arguments` (flat, **no** `params` wrapper) and polls
+`/requests/{id}/status` — exactly what these functions do. So switching model is
+just setting `HF_IMAGE_MODEL`; **no code change**.
+
+**Confirmed REST model_ids** (verified live against our key, 2026-07):
+
+| `model_id` | Note | Live result on our key |
+| --- | --- | --- |
+| `higgsfield-ai/soul/standard` | **Soul** — portrait / studio still-life. Great product shots; text-prone; on a *studio* prompt it skews bare. On a raw *scene* prompt it does render people/scenes. **DEFAULT.** | `200` ✅ works |
+| `bytedance/seedream/v4/text-to-image` | **Seedream 4** — allround, stronger at full scenes (garden, people, context). Also accepts `resolution`/`size` + optional `camera_fixed`. | `404 "Model not found"` — **not provisioned for this account**; enable Seedream on the Higgsfield plan, then set `HF_IMAGE_MODEL` and it works unchanged |
+| `reve/text-to-image` | **Reve** — allround text-to-image. | `423 "model_blocked"` — recognised but not enabled on this plan |
+
+Notes: a `404` means the model_id isn't enabled/available for the key (routing,
+before body validation — a wrong *field* would be `422`); a `423` means the model
+is recognised but blocked for the plan. The model_id string for Seedream is
+confirmed correct by the docs, the SDK and the community ComfyUI integration — the
+`404` here is purely an account-provisioning matter, not a format error.
+
 ### Nano Banana Pro — not yet on the public REST API
 
 Nano Banana Pro (Gemini 3 Pro Image) was requested. Its REST `model_id` is **not**
