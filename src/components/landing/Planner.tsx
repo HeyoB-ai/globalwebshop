@@ -1,7 +1,6 @@
-import { useMemo } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, ArrowUp, Check, TriangleAlert } from 'lucide-react';
-import { AUDIENCES, CITY_PROFILES, type Audience } from '../../data/screens';
+import { AUDIENCES, PROVINCES, CITIES, type Audience } from '../../data/screens';
 import type { PlanResult } from '../../lib/campaignEngine';
 import { useCountUp, fmt, euro } from './useCountUp';
 
@@ -27,11 +26,8 @@ export default function Planner({
 }: PlannerProps) {
   const reach = useCountUp(plan.net);
 
-  const regionOptions = useMemo(() => {
-    const provs = [...new Set(CITY_PROFILES.map((c) => c.prov))].sort();
-    const cities = CITY_PROFILES.map((c) => c.city).sort();
-    return { provs, cities };
-  }, []);
+  // Region options come straight from the real dataset.
+  const regionOptions = { provs: PROVINCES, cities: CITIES };
 
   const fill = ((budget - BUDGET_MIN) / (BUDGET_MAX - BUDGET_MIN)) * 100;
   const regionLabel = region === 'NL' ? 'heel Nederland' : region.replace(/^(prov|city):/, '');
