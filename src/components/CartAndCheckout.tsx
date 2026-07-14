@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { CartItem, Location } from '../types';
-import { ShoppingBag, Calendar, Euro, FileCheck, HelpCircle, ArrowLeft, Send, Sparkles, Building, Mail, Phone, User, CheckCircle, FileText, Download, Maximize2 } from 'lucide-react';
+import { ShoppingBag, Calendar, Euro, FileCheck, HelpCircle, ArrowLeft, Send, Sparkles, Building, Mail, Phone, User, CheckCircle, FileText, Download, Maximize2, Copy } from 'lucide-react';
 import { motion } from 'motion/react';
 import PosterFullscreenEditor, { PosterDesign } from './PosterFullscreenEditor';
 import PosterEditor from './PosterEditor';
@@ -15,6 +15,7 @@ interface CartAndCheckoutProps {
   onRemoveItem: (locationId: string) => void;
   onConfigureCreative: (location: Location) => void;
   onUpdateCreative: (locationId: string, creative: CartItem['creative']) => void;
+  onApplyToAll: (creative: CartItem['creative'], ratioType: Location['type']) => void;
   onBackToLocations: () => void;
   onClearCart: () => void;
 }
@@ -43,6 +44,7 @@ export default function CartAndCheckout({
   onRemoveItem,
   onConfigureCreative,
   onUpdateCreative,
+  onApplyToAll,
   onBackToLocations,
   onClearCart
 }: CartAndCheckoutProps) {
@@ -217,6 +219,12 @@ export default function CartAndCheckout({
             <span className="text-xs text-mist-2 font-mono">{cartItems.length} locaties geselecteerd</span>
           </div>
 
+          {cartItems.length > 0 && (
+            <p className="text-[11px] text-mist-2 bg-paper-2 border border-line rounded-card-sm px-3 py-2 leading-relaxed">
+              Je gemaakte uitingen blijven bewaard zolang deze sessie open is, en je kunt ze op meerdere schermen hergebruiken. Echt opslaan over sessies (met een account) komt later.
+            </p>
+          )}
+
           {cartItems.length === 0 ? (
             <div className="bg-white p-12 text-center rounded-card border border-line space-y-4 shadow-soft">
               <ShoppingBag className="w-12 h-12 text-mist-2 mx-auto" />
@@ -263,32 +271,23 @@ export default function CartAndCheckout({
                   {/* Middle section: Creative status */}
                   <div className="bg-paper-2 p-3 rounded-card-sm border border-line-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
                     <div className="flex items-center gap-3 min-w-0">
-                      {/* Live poster thumbnail for AI-generated creatives */}
-                      {item.creative?.type === 'ai-generated' && item.creative.previewUrl && (
+                      {/* Poster thumbnail for any creative that carries an image */}
+                      {item.creative?.previewUrl && isImageUrl(item.creative.previewUrl) ? (
                         <button
                           type="button"
-                          onClick={() => setFullscreenLocationId(item.location.id)}
-                          title="Beeldvullend bekijken & aanpassen"
-                          className={`group relative w-11 h-16 shrink-0 rounded-md overflow-hidden shadow ring-1 ring-black/5 flex flex-col justify-center p-1 cursor-pointer ${
-                            isImageUrl(item.creative.previewUrl) ? 'bg-paper-2' : item.creative.previewUrl
-                          } ${
-                            item.creative.align === 'left' ? 'items-start text-left' : item.creative.align === 'right' ? 'items-end text-right' : 'items-center text-center'
-                          }`}
-                          style={isImageUrl(item.creative.previewUrl)
-                            ? { backgroundImage: `url("${item.creative.previewUrl}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                            : undefined}
+                          onClick={item.creative.type === 'ai-generated' ? () => setFullscreenLocationId(item.location.id) : undefined}
+                          disabled={item.creative.type !== 'ai-generated'}
+                          title={item.creative.type === 'ai-generated' ? 'Beeldvullend bekijken & aanpassen' : item.creative.title}
+                          className="group relative w-11 h-16 shrink-0 rounded-md overflow-hidden shadow ring-1 ring-black/5 bg-paper-2 cursor-pointer disabled:cursor-default"
+                          style={{ backgroundImage: `url("${item.creative.previewUrl}")`, backgroundSize: 'cover', backgroundPosition: 'center' }}
                         >
-                          {!isImageUrl(item.creative.previewUrl) && (
-                            <span className={`text-[6px] font-extrabold uppercase leading-[1.05] break-words ${item.creative.textColor}`}>
-                              {item.creative.title}
+                          {item.creative.type === 'ai-generated' && (
+                            <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
+                              <Maximize2 className="w-3 h-3 text-white opacity-0 group-hover:opacity-100" />
                             </span>
                           )}
-                          <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
-                            <Maximize2 className="w-3 h-3 text-white opacity-0 group-hover:opacity-100" />
-                          </span>
                         </button>
-                      )}
-                      {item.creative?.type !== 'ai-generated' && (
+                      ) : (
                         <FileText className={`w-4 h-4 shrink-0 ${item.creative ? 'text-ok' : 'text-amber-deep'}`} />
                       )}
                       <div className="min-w-0">
@@ -312,6 +311,16 @@ export default function CartAndCheckout({
                         >
                           <Maximize2 className="w-3 h-3 shrink-0" />
                           <span>Bekijken</span>
+                        </button>
+                      )}
+                      {item.creative?.previewUrl && cartItems.length > 1 && (
+                        <button
+                          onClick={() => onApplyToAll(item.creative, item.location.type)}
+                          title="Deze uiting op alle schermen in je campagne toepassen (aangepast per formaat)"
+                          className="px-3 py-1.5 rounded-full font-bold text-[11px] cursor-pointer transition-all bg-white hover:bg-paper-2 text-mist border border-line shadow-soft flex items-center gap-1"
+                        >
+                          <Copy className="w-3 h-3 shrink-0" />
+                          <span>Op alle schermen</span>
                         </button>
                       )}
                       <button

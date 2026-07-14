@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Location, IntakeAnswers, CartItem, TargetRegion } from './types';
+import { Location, IntakeAnswers, CartItem, TargetRegion, LocationType, SessionCreative } from './types';
 import { MOCK_LOCATIONS, TARGET_AUDIENCES } from './data/mockData';
+import { ratioForType, composeToDataUrl, imageCoverToRatioDataUrl } from './lib/posterComposer';
 import LocationCard from './components/LocationCard';
 import LocationDetailModal from './components/LocationDetailModal';
 import AICreationModal from './components/AICreationModal';
@@ -80,6 +81,10 @@ export default function App() {
   const [selectedLocationForDetail, setSelectedLocationForDetail] = useState<Location | null>(null);
   const [selectedLocationForCreative, setSelectedLocationForCreative] = useState<Location | null>(null);
 
+  // Creatives made this session (in-memory only — no accounts, no storage), so
+  // they can be reused on other screens in the same campaign.
+  const [sessionCreatives, setSessionCreatives] = useState<SessionCreative[]>([]);
+
   // Completed Intake Trigger
   const handleIntakeComplete = (intakeAnswers: IntakeAnswers) => {
     setAnswers(intakeAnswers);
@@ -121,24 +126,88 @@ export default function App() {
     setSelectedLocationForCreative(location);
   };
 
-  // Save creative from modal
+  const newCreativeId = () =>
+    (globalThis.crypto?.randomUUID?.() ?? `sc-${Date.now()}-${Math.round(Math.random() * 1e6)}`);
+
+  // A saved creative → a reusable session entry (only image-bearing, reusable ones).
+  const toSession = (creative: CartItem['creative'], ratioType: LocationType): SessionCreative | null => {
+    if (!creative?.previewUrl) return null;
+    if (creative.type === 'ai-generated' && creative.poster) {
+      return {
+        id: newCreativeId(), kind: 'ai', title: creative.title || 'AI-poster',
+        subtitle: creative.subtitle || '', previewUrl: creative.previewUrl, ratioType, poster: creative.poster,
+      };
+    }
+    if (creative.type === 'upload') {
+      return {
+        id: newCreativeId(), kind: 'upload', title: creative.title || 'Upload',
+        subtitle: creative.subtitle || '', previewUrl: creative.previewUrl, ratioType, sourceImage: creative.previewUrl,
+      };
+    }
+    return null;
+  };
+
+  const recordSession = (creative: CartItem['creative'], ratioType: LocationType) => {
+    const sc = toSession(creative, ratioType);
+    if (!sc) return;
+    setSessionCreatives((prev) => (prev.some((x) => x.previewUrl === sc.previewUrl) ? prev : [sc, ...prev]));
+  };
+
+  // Re-render a session creative for a target screen ratio (no stretching):
+  // AI posters are re-composed at the ratio; uploads are cover-cropped.
+  const materialize = async (sc: SessionCreative, targetType: LocationType): Promise<CartItem['creative']> => {
+    const ratio = ratioForType(targetType);
+    if (sc.kind === 'ai' && sc.poster) {
+      const previewUrl = await composeToDataUrl({
+        photoUrl: sc.poster.photoUrl, ratio, fields: sc.poster.fields, template: sc.poster.template, theme: sc.poster.theme,
+      });
+      return { type: 'ai-generated', previewUrl, title: sc.title, subtitle: sc.subtitle, verifiedOk: true, poster: sc.poster };
+    }
+    let previewUrl = sc.previewUrl;
+    if (sc.sourceImage && sc.ratioType !== targetType) {
+      previewUrl = await imageCoverToRatioDataUrl(sc.sourceImage, ratio);
+    }
+    return { type: 'upload', previewUrl, title: sc.title, subtitle: sc.subtitle, verifiedOk: true, fileName: sc.title };
+  };
+
+  const setCreativeOn = (locationId: string, creative: CartItem['creative']) => {
+    setCart((prev) => prev.map((item) => (item.location.id === locationId ? { ...item, creative } : item)));
+  };
+
+  // Save creative from the modal → onto this item + into the session gallery.
   const handleSaveCreative = (creative: any) => {
-    if (!selectedLocationForCreative) return;
-    setCart((prev) =>
-      prev.map((item) =>
-        item.location.id === selectedLocationForCreative.id
-          ? { ...item, creative }
-          : item
-      )
-    );
+    const target = selectedLocationForCreative;
+    if (!target) return;
+    setCreativeOn(target.id, creative);
+    recordSession(creative, target.type);
     setSelectedLocationForCreative(null);
+  };
+
+  // Reuse an earlier session creative on the current item (format-corrected).
+  const handleUseExisting = async (sc: SessionCreative) => {
+    const target = selectedLocationForCreative;
+    if (!target) return;
+    const creative = await materialize(sc, target.type);
+    setCreativeOn(target.id, creative);
+    setSelectedLocationForCreative(null);
+  };
+
+  // Apply one item's creative to every screen in the cart, format-corrected per item.
+  const handleApplyToAll = async (source: CartItem['creative'], sourceRatioType: LocationType) => {
+    const sc = toSession(source, sourceRatioType);
+    if (!sc) return;
+    const updates = await Promise.all(
+      cart.map(async (item) => ({ id: item.location.id, creative: await materialize(sc, item.location.type) })),
+    );
+    setCart((prev) => prev.map((item) => {
+      const u = updates.find((x) => x.id === item.location.id);
+      return u ? { ...item, creative: u.creative } : item;
+    }));
   };
 
   // Update an existing creative in place (e.g. edits from the fullscreen editor in the cart)
   const handleUpdateCreative = (locationId: string, creative: CartItem['creative']) => {
-    setCart((prev) =>
-      prev.map((item) => (item.location.id === locationId ? { ...item, creative } : item))
-    );
+    setCreativeOn(locationId, creative);
   };
 
   // Recommendation matcher engine (Problem #1)
@@ -551,6 +620,7 @@ export default function App() {
             onRemoveItem={handleRemoveCartItem}
             onConfigureCreative={handleConfigureCreative}
             onUpdateCreative={handleUpdateCreative}
+            onApplyToAll={handleApplyToAll}
             onBackToLocations={() => setView('intake')}
             onClearCart={() => setCart([])}
           />
@@ -598,6 +668,8 @@ export default function App() {
           onClose={() => setSelectedLocationForCreative(null)}
           onSaveCreative={handleSaveCreative}
           currentCreative={cart.find((item) => item.location.id === selectedLocationForCreative.id)?.creative}
+          sessionCreatives={sessionCreatives}
+          onUseExisting={handleUseExisting}
         />
       )}
 

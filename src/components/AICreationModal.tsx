@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Location } from '../types';
+import { Location, SessionCreative } from '../types';
 import { X, UploadCloud, Sparkles, CheckCircle2, AlertCircle, RefreshCw, FileText, LayoutTemplate, ShieldCheck, Check, ShieldAlert, Maximize2 } from 'lucide-react';
 import { startCreative, pollCreative } from '../lib/creativeClient';
 import PosterComposer from './PosterComposer';
@@ -34,6 +34,8 @@ interface AICreationModalProps {
     };
   }) => void;
   currentCreative?: any;
+  sessionCreatives?: SessionCreative[];
+  onUseExisting?: (sc: SessionCreative) => void;
 }
 
 type ActiveTab = 'upload' | 'generate' | 'verify';
@@ -42,12 +44,15 @@ export default function AICreationModal({
   location,
   onClose,
   onSaveCreative,
-  currentCreative
+  currentCreative,
+  sessionCreatives = [],
+  onUseExisting,
 }: AICreationModalProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('upload');
 
   // Tab 1: Upload state
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadDataUrl, setUploadDataUrl] = useState<string | null>(null); // the actual image, kept in-memory
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'analyzing' | 'completed'>('idle');
 
@@ -80,11 +85,18 @@ export default function AICreationModal({
     overall: boolean;
   } | null>(null);
 
-  // Simulated Upload Flow
+  // Simulated Upload Flow — but we DO keep the real image (as a data-URL) so the
+  // creative actually persists on the cart item and can be reused this session.
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     setUploadFile(file);
+    setUploadDataUrl(null);
+    if (/^image\//.test(file.type)) {
+      const reader = new FileReader();
+      reader.onload = () => setUploadDataUrl(String(reader.result));
+      reader.readAsDataURL(file);
+    }
     setUploadStatus('uploading');
     setUploadProgress(10);
 
@@ -164,9 +176,10 @@ export default function AICreationModal({
       onSaveCreative({
         type: 'upload',
         fileName: uploadFile.name,
+        previewUrl: uploadDataUrl ?? undefined, // keep the real image so it persists + is reusable
         verifiedOk: true,
-        title: 'Eigen Upload',
-        subtitle: uploadFile.name
+        title: 'Eigen upload',
+        subtitle: uploadFile.name,
       });
     } else if (activeTab === 'generate' && generateReady) {
       // Compose the final designed poster (template + theme + sharp text) → PNG.
@@ -277,6 +290,34 @@ export default function AICreationModal({
 
         {/* Scrollable Content Panel */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
+
+          {/* Reuse an earlier creative from this session (no re-generating, no credits) */}
+          {sessionCreatives.length > 0 && onUseExisting && (
+            <div className="bg-cobalt-soft/40 border border-cobalt-soft rounded-card-sm p-4 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-cobalt">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Gebruik een eerder gemaakte uiting</span>
+              </div>
+              <div className="flex gap-2.5 overflow-x-auto pb-1">
+                {sessionCreatives.map((sc) => (
+                  <button
+                    key={sc.id}
+                    type="button"
+                    onClick={() => onUseExisting(sc)}
+                    title={`${sc.title} — toepassen op dit scherm`}
+                    className={`group relative shrink-0 w-14 rounded-md overflow-hidden border-2 border-line hover:border-cobalt transition-all cursor-pointer bg-paper-2 ${
+                      sc.ratioType === 'abri' ? 'aspect-[2/3]' : 'aspect-[9/16]'
+                    }`}
+                  >
+                    <img src={sc.previewUrl} alt={sc.title} className="absolute inset-0 w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-mist-2">
+                Klik om direct toe te passen op <b>{location.street}, {location.city}</b> — automatisch aangepast aan dit formaat. Geen nieuwe credits.
+              </p>
+            </div>
+          )}
 
           {/* TAB 1: UPLOAD OWN CREATION */}
           {activeTab === 'upload' && (
