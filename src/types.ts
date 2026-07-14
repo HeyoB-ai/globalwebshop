@@ -80,3 +80,24 @@ export interface CartItem {
     };
   };
 }
+
+/**
+ * A creative made this session, kept in-memory (no storage) so it can be reused
+ * on other screens in the same campaign. AI posters keep their full design so we
+ * can re-render at any ratio; uploads keep the source image so we can re-crop.
+ */
+export interface SessionCreative {
+  id: string;
+  kind: 'ai' | 'upload';
+  title: string;
+  subtitle: string;
+  previewUrl: string; // thumbnail, in the ratio it was made
+  ratioType: LocationType; // 'digital' (9:16) | 'abri' (2:3)
+  poster?: {
+    fields: PosterFields;
+    template: TemplateKey;
+    theme: ThemeKey;
+    photoUrl: string | null;
+  };
+  sourceImage?: string; // uploads: original image data-URL, for re-cropping
+}

@@ -595,4 +595,25 @@ export async function composeToDataUrl(opts: {
   return canvas.toDataURL('image/png');
 }
 
+/**
+ * Re-crop a raster image (e.g. an uploaded poster) to a target ratio with a
+ * cover fit — no stretching. Used to reuse an upload on a differently-shaped
+ * screen (2:3 abri ↔ 9:16 digital).
+ */
+export async function imageCoverToRatioDataUrl(src: string, ratio: Ratio): Promise<string> {
+  const img = await loadImage(src);
+  const canvas = document.createElement('canvas');
+  canvas.width = ratio.w;
+  canvas.height = ratio.h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas niet beschikbaar.');
+  const ir = img.width / img.height;
+  const r = ratio.w / ratio.h;
+  let dw: number, dh: number, dx: number, dy: number;
+  if (ir > r) { dh = ratio.h; dw = ratio.h * ir; dx = (ratio.w - dw) / 2; dy = 0; }
+  else { dw = ratio.w; dh = ratio.w / ir; dx = 0; dy = (ratio.h - dh) / 2; }
+  ctx.drawImage(img, dx, dy, dw, dh);
+  return canvas.toDataURL('image/png');
+}
+
 export { ensureFonts };
