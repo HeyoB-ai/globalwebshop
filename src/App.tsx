@@ -12,7 +12,7 @@ import LocationDetailModal from './components/LocationDetailModal';
 import AICreationModal from './components/AICreationModal';
 import InteractiveMap from './components/InteractiveMap';
 import CartAndCheckout from './components/CartAndCheckout';
-import Logo, { LogoMark } from './components/Logo';
+import Logo from './components/Logo';
 import Landing from './components/landing/Landing';
 import type { Screen } from './data/screens';
 import { screenToLocation } from './lib/adapters';
@@ -339,7 +339,7 @@ export default function App() {
             onClick={() => setView('intake')}
             className="flex items-center gap-3 text-left focus:outline-none focus:ring-0 cursor-pointer"
           >
-            <Logo size={36} />
+            <Logo height={30} />
           </button>
 
           {/* Current Campaign Quick Indicator */}
@@ -629,11 +629,7 @@ export default function App() {
       <footer className="bg-white border-t border-line px-4 py-12 text-xs text-mist-2 mt-16 shadow-soft">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start gap-6">
           <div className="space-y-2.5 max-w-md">
-            <div className="flex items-center gap-2">
-              <LogoMark size={22} />
-              <span className="font-display font-bold text-sm text-ink tracking-tight">Global</span>
-              <span className="text-xs font-medium text-mist">Buitenreclame</span>
-            </div>
+            <Logo height={26} />
             <p className="leading-relaxed text-mist">
               Buitenreclame voor het MKB — vertel wie je wilt bereiken en wat je kwijt wilt, en je ziet meteen hoe ver je komt. Geen bureau, geen jargon.
             </p>
