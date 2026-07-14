@@ -35,6 +35,8 @@ export interface Location {
   environment: string;
   specs: LocationSpecs;
   coordinates: LocationCoordinates;
+  lat?: number; // real WGS84 latitude (from the screen data)
+  lng?: number; // real WGS84 longitude
   recommendedFor: string[]; // matching tags: "studenten", "forensen", "gezinnen", "sportievelingen", "zakelijk"
 }
 

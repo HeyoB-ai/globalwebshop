@@ -3,9 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import { lazy, Suspense } from 'react';
 import { Location } from '../types';
-import { X, MapPin, Users, Euro, Maximize2, ShieldAlert, FileText, CalendarRange, Clock, HelpCircle, Eye, Compass, Plus, Check } from 'lucide-react';
+import { X, MapPin, Users, Maximize2, ShieldAlert, FileText, CalendarRange, Eye, Plus, Check } from 'lucide-react';
+
+// maplibre-gl is heavy → lazy-load the mini-map so it stays out of the main bundle.
+const ScreenMiniMap = lazy(() => import('./ScreenMiniMap'));
 
 interface LocationDetailModalProps {
   location: Location;
@@ -20,6 +23,11 @@ export default function LocationDetailModal({
   onToggleCart,
   isInCart
 }: LocationDetailModalProps) {
+  const hasCoords =
+    typeof location.lat === 'number' &&
+    typeof location.lng === 'number' &&
+    !(location.lat === 0 && location.lng === 0);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Dark Backdrop */}
@@ -60,39 +68,35 @@ export default function LocationDetailModal({
           {/* Mini-Radar Intersection Map */}
           <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
             <div className="space-y-1.5">
-              <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-mist-2 flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-cobalt" />
-                <span>Exacte Locatie & Radar</span>
+              <h4 className="text-sm font-bold text-ink flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-cobalt" />
+                <span>Waar hangt dit scherm?</span>
               </h4>
-              <p className="text-xs text-mist leading-relaxed font-sans">
-                Gepositioneerd aan <strong className="text-ink">{location.street}</strong> in de wijk <strong className="text-ink">{location.neighborhood}</strong>.
+              <p className="text-xs text-mist leading-relaxed">
+                In <strong className="text-ink">{location.city}</strong>, bij <strong className="text-ink">{location.street}</strong>.
               </p>
             </div>
 
-            {/* Interactive/Mock vector radar map */}
-            <div className="relative h-28 bg-paper-2 rounded-card-sm overflow-hidden border border-line flex items-center justify-center">
-              {/* Radar grids */}
-              <div className="absolute inset-0 bg-[radial-gradient(rgba(36,86,230,0.15)_1px,transparent_1px)] bg-[size:12px_12px]" />
-              <div className="w-20 h-20 rounded-full border border-cobalt/15 absolute flex items-center justify-center">
-                <div className="w-10 h-10 rounded-full border border-cobalt/25 absolute flex items-center justify-center" />
-                <div className="w-2 h-2 rounded-full bg-cobalt animate-ping absolute" />
-                <div className="w-2 h-2 rounded-full bg-cobalt absolute" />
+            {/* Real static mini-map on the screen's actual coordinates */}
+            {hasCoords ? (
+              <div className="space-y-1.5">
+                <Suspense fallback={<div className="h-28 bg-paper-2 rounded-card-sm border border-line flex items-center justify-center text-[11px] text-mist-2">Kaartje laden…</div>}>
+                  <ScreenMiniMap lat={location.lat!} lng={location.lng!} />
+                </Suspense>
+                <p className="text-[10px] font-mono text-mist-2">
+                  {location.lat!.toFixed(5)} N, {location.lng!.toFixed(5)} O
+                </p>
               </div>
-
-              {/* Radar swept line */}
-              <div className="absolute w-12 h-1 bg-gradient-to-r from-cobalt/40 to-transparent transform origin-left rotate-45 animate-[spin_5s_linear_infinite]" />
-
-              <div className="absolute bottom-2 left-2 text-[9px] font-mono text-mist-2 bg-white/90 px-1.5 py-0.5 rounded border border-line">
-                GPS: 52.{Math.round(location.coordinates.y * 1000)}° N, 4.{Math.round(location.coordinates.x * 1000)}° O
-              </div>
-            </div>
+            ) : (
+              <p className="text-xs text-mist">Locatie: <strong className="text-ink">{location.city}</strong></p>
+            )}
 
             {/* Price block */}
             <div className="flex items-center justify-between p-3 bg-white border border-line rounded-card-sm shadow-soft">
               <div>
-                <span className="text-[10px] font-mono text-mist-2 block uppercase leading-none font-bold">Investeringsindicatie</span>
+                <span className="text-[10px] font-mono text-mist-2 block uppercase leading-none font-bold">Prijs</span>
                 <span className="text-xl font-black text-amber-deep font-mono">€{location.price}</span>
-                <span className="text-[10px] text-mist"> / week ex. BTW</span>
+                <span className="text-[10px] text-mist"> / week ex. btw</span>
               </div>
               <button
                 onClick={() => onToggleCart(location)}
@@ -168,7 +172,7 @@ export default function LocationDetailModal({
             {/* Description Section (Solves Point #4) */}
             <div className="space-y-2">
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-mist-2">
-                Omgevingsomschrijving & Kenmerken
+                Over deze plek
               </h3>
               <div className="bg-paper-2 p-4 rounded-card-sm border border-line-2 space-y-3">
                 <p className="text-xs sm:text-sm text-mist leading-relaxed font-sans">
@@ -184,7 +188,7 @@ export default function LocationDetailModal({
             <div className="space-y-3">
               <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-mist-2 flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-cobalt" />
-                <span>Specificaties & Richtlijnen</span>
+                <span>Goed om te weten</span>
               </h3>
 
               <div className="space-y-2.5">

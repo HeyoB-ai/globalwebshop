@@ -58,7 +58,9 @@ export function screenToLocation(screen: Screen): Location {
     type: screen.type,
     street: screen.area,
     city: screen.city,
-    neighborhood: `${screen.area}, ${screen.province}`,
+    // The province is the meaningful "region" for a station screen; the old
+    // `${area}, ${province}` duplicated the street/area in the UI.
+    neighborhood: screen.province,
     reach: screen.weeklyReach,
     price: screen.weeklyPrice,
     image: screenImage(screen),
@@ -73,7 +75,9 @@ export function screenToLocation(screen: Screen): Location {
       ? `Levendige plek in ${screen.area} (${screen.city}) met veel voetgangers en passanten.`
       : `Straatbeeld in ${screen.area} (${screen.city}) met doorgaand voetgangers- en fietsverkeer.`,
     specs: specsFor(screen),
-    coordinates: { x: 50, y: 50 },
+    coordinates: { x: 50, y: 50 }, // legacy SVG-map field (unused for screens)
+    lat: screen.lat,
+    lng: screen.lng,
     recommendedFor: [...screen.audiences],
   };
 }
