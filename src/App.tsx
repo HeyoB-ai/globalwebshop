@@ -12,6 +12,7 @@ import LocationDetailModal from './components/LocationDetailModal';
 import AICreationModal from './components/AICreationModal';
 import InteractiveMap from './components/InteractiveMap';
 import CartAndCheckout from './components/CartAndCheckout';
+import Logo, { LogoMark } from './components/Logo';
 import Landing from './components/landing/Landing';
 import type { Screen } from './data/screens';
 import { screenToLocation } from './lib/adapters';
@@ -338,11 +339,7 @@ export default function App() {
             onClick={() => setView('intake')}
             className="flex items-center gap-3 text-left focus:outline-none focus:ring-0 cursor-pointer"
           >
-            <div className="w-9 h-9 rounded-lg bg-cobalt shadow-soft" />
-            <div className="flex items-baseline gap-2">
-              <span className="font-display font-extrabold text-lg tracking-tight text-ink">Global</span>
-              <span className="text-xs font-medium text-mist">Buitenreclame</span>
-            </div>
+            <Logo size={36} />
           </button>
 
           {/* Current Campaign Quick Indicator */}
@@ -633,7 +630,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start gap-6">
           <div className="space-y-2.5 max-w-md">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-cobalt" />
+              <LogoMark size={22} />
               <span className="font-display font-bold text-sm text-ink tracking-tight">Global</span>
               <span className="text-xs font-medium text-mist">Buitenreclame</span>
             </div>

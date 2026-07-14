@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ShoppingBag } from 'lucide-react';
+import Logo, { LogoMark } from '../Logo';
 import { type Audience, type Screen } from '../../data/screens';
 import { planCampaign } from '../../lib/campaignEngine';
 import Hero from './Hero';
@@ -45,7 +46,7 @@ export default function Landing({
       {/* topbar */}
       <div className="topbar">
         <div className="in">
-          <div className="brand"><span className="dot" />Global <small>Buitenreclame</small></div>
+          <div className="brand"><Logo size={30} /></div>
           <nav className="topnav">
             <a href="#how">Hoe het werkt</a>
             <a href="#explain">Uitleg</a>
@@ -97,7 +98,9 @@ export default function Landing({
       <FinalCta />
 
       <div className="footer wrap">
-        <span>© Global Buitenreclame — conceptdemo. Foto's: Higgsfield. Testimonial ter illustratie.</span>
+        <span className="inline-flex items-center gap-2">
+          <LogoMark size={18} /> © Global Buitenreclame — conceptdemo. Foto's: Higgsfield. Testimonial ter illustratie.
+        </span>
         <span>Bereik = unieke mensen, overlap eruit gerekend · prijzen per week</span>
       </div>
     </div>
