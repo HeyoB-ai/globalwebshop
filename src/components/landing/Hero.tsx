@@ -39,7 +39,7 @@ export default function Hero({ children }: HeroProps) {
       )}
       <div className="wrap hero-inner">
         <div className="hero-copy">
-          <span className="eyebrow"><span className="pulse" />Buitenreclame voor het MKB · heel Nederland</span>
+          <span className="eyebrow"><span className="pulse" /><span className="eyebrow-text">Buitenreclame voor het MKB<span className="eyebrow-region"> · heel Nederland</span></span></span>
           <h1>Zoveel mogelijk mensen.<br /><span className="accent">Voor jouw budget.</span></h1>
           <p className="lede">Nog nooit geadverteerd? Geen reclamebureau? Daar is dit voor gemaakt. Vertel wie je wilt bereiken en wat je kwijt wilt — je ziet meteen hoe ver je komt.</p>
           <div className="trust">
