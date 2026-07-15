@@ -132,7 +132,10 @@
 .gws-landing .how .layout { display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(30px, 5vw, 64px); align-items: start; }
 @media (max-width: 860px) { .gws-landing .how .layout { grid-template-columns: 1fr; } }
 .gws-landing .how .photo { min-height: 100%; position: sticky; top: 100px; }
-@media (max-width: 860px) { .gws-landing .how .photo { min-height: 320px; position: static; } }
+/* On mobile the sticky photo becomes a normal in-flow tile. Keep position:relative
+   (NOT static) so its absolutely-positioned <img>/fallback stay contained — with
+   `static` they escape to a higher ancestor and get clipped, leaving an empty tile. */
+@media (max-width: 860px) { .gws-landing .how .photo { min-height: 320px; position: relative; top: auto; } }
 .gws-landing .steps { display: flex; flex-direction: column; gap: 14px; }
 .gws-landing .stepcard { display: flex; gap: 20px; padding: 26px; border-radius: var(--r); background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); transition: .18s; }
 .gws-landing .stepcard:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
@@ -237,3 +240,84 @@
 .gws-landing .final .subtle { margin-top: 16px; font-size: 13px; color: var(--mist-2); }
 
 .gws-landing .footer { border-top: 1px solid var(--line-2); padding: 34px 0; color: var(--mist-2); font-size: 13px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+
+/* MapLibre container — height lives here (was inline) so it can go responsive. */
+.gws-landing .screenmap { width: 100%; height: 520px; border-radius: 16px; overflow: hidden; }
+
+/* ===========================================================================
+   Phone layout (≤640px). Single column, readable type, comfortable tap targets
+   (≥44px), no horizontal scroll. Larger-tablet breakpoints (940/860/760px)
+   above already collapse the big grids; this tunes the actual phone view.
+   =========================================================================== */
+@media (max-width: 640px) {
+  /* ---------- hero: poster-only, clean readable overlay ---------- */
+  .gws-landing .hero { padding: 30px 0 44px; }
+  .gws-landing .hero-bgvideo { display: none; }               /* belt-and-suspenders; JS already skips it */
+  .gws-landing .hero::before {
+    background: linear-gradient(180deg,
+      rgba(251, 250, 247, 0.78) 0%,
+      rgba(251, 250, 247, 0.72) 22%,
+      rgba(251, 250, 247, 0.88) 56%,
+      rgba(251, 250, 247, 0.96) 80%,
+      var(--paper) 100%);
+  }
+  .gws-landing .hero-inner { gap: 26px; }
+  .gws-landing h1 { font-size: 38px; margin-bottom: 16px; }
+  .gws-landing .hero .lede { font-size: 16px; max-width: none; }
+  .gws-landing .trust { margin-top: 20px; gap: 8px 16px; }
+
+  /* ---------- top bar ---------- */
+  .gws-landing .topbar .in { padding: 12px 16px; }
+  .gws-landing .brand img { height: 24px !important; }        /* override inline height for breathing room next to the pill */
+  .gws-landing .topnav { gap: 8px; }
+  .gws-landing .topnav .pill { padding: 10px 14px; font-size: 13.5px; white-space: nowrap; }
+  .gws-landing .topnav .cartbtn { padding: 10px 12px; white-space: nowrap; }
+
+  /* ---------- planner card ---------- */
+  .gws-landing .planner { padding: 20px; border-radius: 20px; }
+  .gws-landing .chip { padding: 12px 16px; font-size: 15px; }          /* ~46px tall */
+  .gws-landing select { padding: 15px 42px 15px 15px; font-size: 16px; } /* 16px avoids iOS focus-zoom */
+  .gws-landing .weeks { gap: 10px; }
+  .gws-landing .weeks .wval { min-width: 64px; }
+  .gws-landing .stepbtn { width: 44px; height: 44px; font-size: 20px; } /* tap target */
+  .gws-landing input[type=range] { height: 10px; }
+  .gws-landing input[type=range]::-webkit-slider-thumb { width: 28px; height: 28px; }
+  .gws-landing input[type=range]::-moz-range-thumb { width: 28px; height: 28px; }
+  .gws-landing .budgetval { font-size: 26px; }
+  .gws-landing .nudge { flex-wrap: wrap; }
+  .gws-landing .nudge .nadd { width: 100%; padding: 12px; }            /* full-width, tappable */
+
+  /* ---------- section rhythm ---------- */
+  .gws-landing .voorjou,
+  .gws-landing .how,
+  .gws-landing .explain,
+  .gws-landing .testi,
+  .gws-landing .faq { padding-top: 56px; padding-bottom: 56px; }
+  .gws-landing .results { padding-top: 48px; }
+  .gws-landing .final { padding: 64px 0; }
+  .gws-landing .cinema { padding: 64px 0; }
+
+  /* photos: sensible phone heights */
+  .gws-landing .voorjou .photo { min-height: 300px; }
+  .gws-landing .how .photo { min-height: 280px; }
+  .gws-landing .testi .photo { min-height: 300px; }
+
+  /* how steps + explain/faq cards */
+  .gws-landing .stepcard { padding: 20px; gap: 14px; }
+  .gws-landing .stepcard .no { width: 40px; height: 40px; font-size: 18px; }
+  .gws-landing .term,
+  .gws-landing .q { padding: 20px; }
+
+  /* results header: keep the summary left-aligned once it wraps under the title */
+  .gws-landing .rhead .sum { text-align: left; }
+  .gws-landing .bookall .btn-primary { width: 100%; }
+
+  /* list/map switch + map */
+  .gws-landing .viewswitch { width: 100%; }
+  .gws-landing .vbtn { flex: 1; justify-content: center; padding: 12px 10px; }  /* tap target */
+  .gws-landing .screenmap,
+  .gws-landing .maploading { height: 440px; }
+
+  /* footer stacks */
+  .gws-landing .footer { padding: 26px 0; flex-direction: column; gap: 8px; }
+}
