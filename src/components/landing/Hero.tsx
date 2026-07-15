@@ -7,19 +7,31 @@ interface HeroProps {
 
 /**
  * Hero with a full-bleed video background + the reference's light gradient
- * overlay (.hero::before). Under prefers-reduced-motion only the poster still
- * frame is shown. Holds the h1, lede and trust line.
+ * overlay (.hero::before). The moving video is only shown on larger screens:
+ * on phones (and under prefers-reduced-motion) it would sit restlessly behind
+ * the tall stacked content, so we show just the poster frame with a clean,
+ * readable overlay there (see the ≤640px block in landing.css). Holds the h1,
+ * lede and trust line.
  */
 export default function Hero({ children }: HeroProps) {
-  const [reduced, setReduced] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
   useEffect(() => {
-    setReduced(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+    const motionOk = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const wide = window.matchMedia?.('(min-width: 641px)');
+    const update = () => setShowVideo(!!wide?.matches && !motionOk?.matches);
+    update();
+    wide?.addEventListener('change', update);
+    motionOk?.addEventListener('change', update);
+    return () => {
+      wide?.removeEventListener('change', update);
+      motionOk?.removeEventListener('change', update);
+    };
   }, []);
 
   return (
     <section className="hero" id="top">
       <img className="hero-bgposter" src="/assets/hero-poster.jpg" alt="" aria-hidden="true" />
-      {!reduced && (
+      {showVideo && (
         <video className="hero-bgvideo" autoPlay muted loop playsInline poster="/assets/hero-poster.jpg">
           <source src="/assets/hero.mp4" type="video/mp4" />
           <source src="/assets/hero.webm" type="video/webm" />
